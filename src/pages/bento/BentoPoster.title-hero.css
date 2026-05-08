@@ -1,0 +1,293 @@
+/* ── Title card ───────────────────────────────────────── */
+/* Padding is removed from the card so the globe can bleed edge-to-edge;
+   the inner text block restores it. */
+.bento-card--title { gap: 0; padding: 0; overflow: hidden; }
+.bento-title__layout {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.bento-title__text {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.9rem 1.1rem;
+  /* Anchor to the bottom of the card so the title sits on the strip of
+     gold below the cropped sphere — never overlaps the globe. */
+  margin-top: auto;
+  width: 100%;
+  height: auto;
+}
+.bento-title__globe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+/* Gold wash on the bottom so the title (anchored bottom) always sits on a
+   readable gold band, even where the sphere extends behind it. */
+.bento-title__layout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--color-gold), 0) 0%,
+    rgba(var(--color-gold), 0) 45%,
+    rgba(var(--color-gold), 0.6) 65%,
+    rgb(var(--color-gold)) 85%
+  );
+  pointer-events: none;
+}
+.bento-title__globe .globe__ocean {
+  /* Deep ink ocean — gives strong contrast against gold land. */
+  fill: rgb(var(--color-ink));
+  opacity: 0.78;
+}
+.bento-title__globe .globe__land {
+  /* Land in paper cream so continents read as the lighter shapes. */
+  fill: rgb(var(--color-paper));
+  opacity: 0.95;
+}
+.bento-title__globe .globe__graticule {
+  stroke: rgb(var(--color-paper));
+  stroke-width: 0.6;
+  stroke-opacity: 0.25;
+}
+.bento-title__globe .globe__outline {
+  stroke: rgb(var(--color-ink));
+  stroke-width: 1.4;
+  stroke-opacity: 0.95;
+}
+.bento-title__globe .globe__marker-ring {
+  fill: rgb(var(--color-gold));
+  stroke: rgb(var(--color-ink));
+  stroke-width: 3;
+}
+.bento-title__globe .globe__marker-dot {
+  fill: rgb(var(--color-paper));
+}
+.bento-title {
+  margin: 0;
+  line-height: 0.9;
+  max-width: 100%;
+  min-width: 0;
+}
+.bento-title__place {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 4.25vw, 3.15rem);
+  line-height: 0.88;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  color: rgb(var(--color-ink));
+  max-width: 100%;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.bento-title__sub {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(0.7rem, 1.4vw, 1rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(var(--color-ink));
+  opacity: 0.78;
+  margin-top: 0.4rem;
+  max-width: 100%;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* ── Place picker ─────────────────────────────────────── */
+.bento-select {
+  appearance: none;
+  border: 2px solid rgb(var(--color-ink));
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+.bento-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgb(var(--color-ink));
+  margin-top: 0.2rem;
+}
+
+/* ── Hero species ─────────────────────────────────────── */
+.bento-card--hero {
+  padding: 0;
+  flex-direction: column;
+  gap: 0;
+}
+.bento-hero__img {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  object-fit: cover;
+  /* Wildlife photos almost always frame the subject's head in the upper
+     third — biasing the crop up keeps faces from being sliced off. */
+  object-position: 50% 30%;
+  background: #f3eee5;
+}
+.bento-hero__body {
+  padding: 0.7rem 0.9rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border-top: 2.5px solid rgb(var(--color-ink));
+  background: #fff8ec;
+}
+.bento-hero__name {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1;
+  margin: 0.1rem 0 0;
+  color: rgb(var(--color-ink));
+}
+.bento-hero__sci {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: rgb(var(--color-ink-soft));
+  margin: 0;
+}
+.bento-hero__taxon {
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--color-ink-soft));
+}
+.bento-hero__count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(var(--color-ink));
+  margin-top: 0.15rem;
+}
+.bento-hero__langs-kicker {
+  margin-top: 0.5rem;
+}
+
+/* ── Multilingual names list ──────────────────────────── */
+.bento-langs {
+  list-style: none;
+  padding: 0;
+  margin: 0.2rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.3rem 0.6rem;
+}
+.bento-langs__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  min-width: 0;
+}
+.bento-langs__code {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  background: rgb(var(--color-ink));
+  color: #fff;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.bento-langs__name {
+  font-weight: 600;
+  color: rgb(var(--color-ink));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Mini species card (1×1) ──────────────────────────── */
+.bento-card--mini {
+  padding: 0;
+  gap: 0;
+}
+.bento-mini__img {
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 60px;
+  object-fit: cover;
+  object-position: 50% 30%;
+  background: #f3eee5;
+}
+.bento-card--mini > .bento-mini__name,
+.bento-card--mini > .bento-mini__sci,
+.bento-card--mini > .bento-mini__count,
+.bento-card--mini > .bento-mini__status {
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
+}
+.bento-mini__name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  line-height: 1.15;
+  color: rgb(var(--color-ink));
+  margin-top: 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bento-mini__sci {
+  display: block;
+  font-style: italic;
+  font-size: 0.65rem;
+  line-height: 1.2;
+  color: rgb(var(--color-ink-soft));
+  margin-top: 0.1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bento-mini__count,
+.bento-mini__status {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
+}
+.bento-mini__count { color: rgb(var(--color-ink)); }
+
+/* At-risk mini variant: red border accent + IUCN badge over the photo. */
+.bento-card--at-risk { position: relative; }
+.bento-card--at-risk .bento-mini__img {
+  border-bottom: 3px solid rgb(var(--color-accent));
+}
+.bento-mini__badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  background: rgb(var(--color-accent));
+  color: #fff;
+  border: 1.5px solid rgb(var(--color-ink));
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  z-index: 1;
+}

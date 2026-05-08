@@ -1,0 +1,260 @@
+/* ═══════════════════════════════════════════════════════
+   BentoPoster — bento-style biodiversity poster
+   Discrete cards, dense CSS grid, neo-brutalist tiles.
+   ═══════════════════════════════════════════════════════ */
+
+.bento-shell {
+  min-height: 100vh;
+  padding: clamp(1rem, 2.5vw, 2rem);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.18) 0%, transparent 60%),
+    #d9cfc2;
+  position: relative;
+}
+
+/* Hide the browser's broken-image glyph while images are loading or
+   when no source is enabled. The card's tan background shows through. */
+img[src=""] { visibility: hidden; }
+
+.bento-toolbar {
+  position: fixed;
+  top: 0.8rem;
+  right: 0.8rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.bento-toolbar__select {
+  appearance: none;
+  border: 2px solid rgb(var(--color-ink));
+  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%23000' stroke-width='1.5' d='M1 1l4 4 4-4'/></svg>") no-repeat right 0.6rem center;
+  padding: 0.4rem 1.8rem 0.4rem 0.7rem;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
+}
+.bento-toolbar__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  border: 2px solid rgb(var(--color-ink));
+  background: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
+}
+.bento-toolbar__check input { margin: 0; cursor: pointer; }
+.bento-toolbar__sources {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.bento-toolbar__source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.bento-toolbar__rank {
+  appearance: none;
+  border: 2px solid rgb(var(--color-ink));
+  background: #fff;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 1.5px 1.5px 0 0 rgb(var(--color-ink));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bento-toolbar__rank:hover:not(:disabled) {
+  background: rgb(var(--color-gold));
+}
+.bento-toolbar__rank:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.bento-toolbar__sources-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.1rem;
+}
+.bento-toolbar__btn {
+  appearance: none;
+  border: 2px solid rgb(var(--color-ink));
+  background: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.bento-toolbar__btn:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 0 rgb(var(--color-ink)); }
+.bento-toolbar__btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 0 rgb(var(--color-ink)); }
+.bento-toolbar__btn--primary { background: rgb(var(--color-gold)); }
+
+/* ── Grid ─────────────────────────────────────────────── */
+/* Columns + rows + aspect-ratio are set inline so the packer drives layout
+   AND every cell stays a true square (so 1×1 looks square, 2×1 truly 2:1). */
+.bento-grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  gap: clamp(0.5rem, 1vw, 0.85rem);
+}
+@media (max-width: 700px) {
+  /* On phones, drop the strict aspect ratio — let cards grow as tall as
+     content needs. Cells are no longer square but the layout still works. */
+  .bento-grid { aspect-ratio: auto !important; grid-auto-rows: minmax(110px, auto); }
+}
+
+/* ── Card base ────────────────────────────────────────── */
+.bento-card {
+  position: relative;
+  border: 2.5px solid rgb(var(--color-ink));
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  box-shadow: 4px 4px 0 0 rgb(var(--color-ink));
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow: hidden;
+  background: rgb(var(--color-paper));
+}
+
+/* accent palette */
+.accent-paper  { background: #fff8ec; }
+.accent-gold   { background: rgb(var(--color-gold) / 0.85); color: rgb(var(--color-ink)); }
+.accent-forest { background: rgb(var(--color-forest) / 0.18); }
+.accent-accent { background: rgb(var(--color-accent) / 0.85); color: #fff; }
+.accent-accent .bento-card__kicker,
+.accent-accent .bento-card__sub { color: #fff; opacity: 0.85; }
+.accent-ink    { background: rgb(var(--color-ink)); color: #fff; }
+.accent-ink .bento-card__kicker,
+.accent-ink .bento-card__sub { color: #fff; opacity: 0.7; }
+
+/* Invisible padding tiles — keep the rectangle tight with no holes. */
+.bento-card--filler {
+  background: repeating-linear-gradient(
+    45deg,
+    #f3eee5 0 10px,
+    #ece6da 10px 20px
+  );
+  border-color: rgb(var(--color-ink) / 0.6);
+  border-style: dashed;
+  box-shadow: none;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ── Card type ────────────────────────────────────────── */
+.bento-card__kicker {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(var(--color-ink-soft));
+}
+.bento-card__sub {
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: rgb(var(--color-ink-soft));
+  margin: 0;
+}
+.bento-prose {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  margin: 0;
+  font-weight: 600;
+  color: #fff;
+}
+.bento-bignum {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin-top: 0.2rem;
+}
+.bento-bignum--sm {
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
+}
+
+/* ── Combined stats card (sightings + at-risk + kingdom caption) ────── */
+.bento-card--stats { padding: 0; }
+.bento-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) auto minmax(0, 0.85fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+.bento-stats__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.85rem;
+  min-width: 0;
+}
+.bento-stats__cell--sightings { padding-right: 0.7rem; }
+.bento-stats__cell--risk { padding-left: 0.7rem; }
+.bento-stats__divider {
+  width: 2px;
+  align-self: stretch;
+  background: rgba(255,255,255,0.18);
+}
+.bento-stats__count {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.bento-stats__count--sightings {
+  font-size: clamp(1.25rem, 3vw, 2.3rem);
+}
+.bento-stats__count--risk {
+  font-size: clamp(1.05rem, 2.2vw, 1.75rem);
+}
+.bento-stats__danger { color: rgb(var(--color-accent)); }
+.bento-stats__caption {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.45rem 0.85rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.85);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+.bento-stats__caption-kicker {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 0.2rem;
+}
+.bento-stats__caption-text {
+  display: block;
+}

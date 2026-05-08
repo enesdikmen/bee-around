@@ -1,0 +1,186 @@
+/* ── Strip (in-season / small wonders thumbnails) ─────── */
+.bento-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+  flex: 1 1 auto;
+}
+.bento-strip__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+}
+.bento-strip__item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: 50% 30%;
+  border-radius: 8px;
+  border: 2px solid rgb(var(--color-ink));
+  background: #fff;
+}
+.bento-strip__name {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-top: 0.25rem;
+  line-height: 1.1;
+  color: rgb(var(--color-ink));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.bento-strip__item { position: relative; }
+.bento-strip__badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  background: rgb(var(--color-accent));
+  color: #fff;
+  border: 1.5px solid rgb(var(--color-ink));
+  border-radius: 6px;
+  padding: 0.05rem 0.3rem;
+  line-height: 1.1;
+}
+.bento-card__kicker--danger {
+  background: rgb(var(--color-accent));
+  color: #fff;
+  margin-top: 0.5rem;
+}
+
+/* ── Seasonality dots ─────────────────────────────────── */
+.bento-season {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: end;
+  gap: 0.2rem;
+  margin-top: 0.4rem;
+  flex: 1 1 auto;
+}
+.bento-season__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-height: 56px;
+  justify-content: flex-end;
+}
+.bento-season__bubble {
+  background: rgb(var(--color-ink));
+  border-radius: 50%;
+  flex-shrink: 0;
+  min-width: 8px;
+  min-height: 8px;
+}
+.bento-season__label {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  color: rgb(var(--color-ink-soft));
+}
+
+/* ── Conservation buckets (compact header + photo strip) ─ */
+.bento-card--iucn { gap: 0.25rem; }
+.bento-iucn__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.bento-iucn__buckets {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.bento-iucn__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  line-height: 1;
+  color: rgb(var(--color-ink));
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem 0.18rem 0.35rem;
+}
+.bento-iucn__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgb(var(--color-ink));
+  flex-shrink: 0;
+}
+.bento-iucn__count {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.bento-iucn__label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bento-iucn__risk-kicker {
+  margin-top: 0.25rem;
+}
+.bento-iucn__strip {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0.25rem;
+  align-items: stretch;
+  /* Reserve vertical room for the name + badge under each image so the
+     third species name doesn't get clipped when card height is tight. */
+}
+.bento-iucn__strip .bento-strip__item {
+  min-height: 0;
+  justify-content: flex-start;
+  /* Pad the top so the absolute-positioned IUCN badge never overlaps the
+     name even if the image cell shrinks on tight rows. */
+  padding-top: 0;
+}
+.bento-iucn__strip .bento-strip__item img {
+  aspect-ratio: 1;
+}
+.bento-iucn__strip .bento-strip__name {
+  flex-shrink: 0;
+  margin-top: 0.3rem;
+}
+.bento-bucket {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 0.05rem 0.4rem;
+  min-width: 0;
+}
+.bento-bucket__dot {
+  grid-row: 1 / span 2;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgb(var(--color-ink));
+  flex-shrink: 0;
+}
+.bento-bucket__count {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: rgb(var(--color-ink));
+  line-height: 1;
+}
+.bento-bucket__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgb(var(--color-ink));
+}
+.bento-bucket__hint {
+  grid-column: 2 / span 2;
+  font-size: 0.6rem;
+  color: rgb(var(--color-ink-soft));
+  line-height: 1.2;
+}

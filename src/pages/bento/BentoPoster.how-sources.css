@@ -1,0 +1,65 @@
+/* ── How-we-know rows ─────────────────────────────────── */
+.bento-rows {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.bento-card--how .bento-rows {
+  margin-top: 0.3rem;
+  gap: 0.3rem;
+}
+.bento-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.bento-row__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.bento-row__pct {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: #fff;
+  min-width: 2.4rem;
+}
+.bento-row__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+}
+.bento-row__hint {
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.7);
+  margin-left: 2.9rem;
+}
+.bento-row__bar {
+  height: 5px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-left: 2.9rem;
+}
+.bento-row__bar-fill {
+  height: 100%;
+  background: rgb(var(--color-gold));
+  border-radius: inherit;
+}
+.bento-row--rest {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.5rem;
+  opacity: 0.7;
+}
+
+/* ── Datasets footer ──────────────────────────────────── */
+.bento-datasets {
+  font-size: 0.7rem;
+  color: rgb(var(--color-ink));
+  margin: 0.2rem 0 0;
+  line-height: 1.4;
+}
