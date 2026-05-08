@@ -197,7 +197,7 @@ export const useLensData = (
   // Gallery species selection is config-driven via HERO_SLOT_RULES.
   // We fetch candidate pools once per place and reuse them on regenerate.
   const topSpeciesPoolQuery = useQuery({
-    queryKey: ['topSpeciesPool', selectedPlace?.id, imageSources],
+    queryKey: ['topSpeciesPool', selectedPlace?.id],
     queryFn: async ({ signal }): Promise<TopSpeciesPoolData> => {
       if (!selectedPlace) return { slots: [], vernacularsBySpecies: {} }
 
@@ -410,7 +410,7 @@ export const useLensData = (
   const currentYear = new Date().getFullYear()
 
   const inSeasonQuery = useQuery({
-    queryKey: ['lensInSeason', selectedPlace?.id, currentMonth, imageSources],
+    queryKey: ['lensInSeason', selectedPlace?.id, currentMonth],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       if (!selectedPlace) return []
       const response = await fetchOccurrenceFacets({
@@ -439,7 +439,7 @@ export const useLensData = (
   // and fungi (kingdomKey=5), merged by raw record count so a fungi-poor
   // city naturally shows more insects.
   const smallWondersQuery = useQuery({
-    queryKey: ['lensSmallWonders', selectedPlace?.id, imageSources],
+    queryKey: ['lensSmallWonders', selectedPlace?.id],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       return resolveMergedStrip(
         SMALL_WONDERS_RULE.sources,
@@ -464,7 +464,6 @@ export const useLensData = (
       selectedPlace?.id,
       recentStartYear,
       currentYear,
-      imageSources,
     ],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       if (!selectedPlace) return []
@@ -530,7 +529,7 @@ export const useLensData = (
 
   // Lens 4 — "Night creatures": bats + owls + moth families mixed by count.
   const nightCreaturesQuery = useQuery({
-    queryKey: ['lensNightCreatures', selectedPlace?.id, imageSources],
+    queryKey: ['lensNightCreatures', selectedPlace?.id],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       return resolveMergedStrip(
         NIGHT_CREATURES_RULE.sources,
@@ -633,7 +632,7 @@ export const useLensData = (
 
   // Top threatened species (CR/EN/VU) — names + photos for the at-risk card.
   const threatenedSpeciesQuery = useQuery({
-    queryKey: ['threatenedSpecies', selectedPlace?.id, imageSources],
+    queryKey: ['threatenedSpecies', selectedPlace?.id],
     queryFn: async ({ signal }): Promise<ThreatenedSpecies[]> => {
       if (!selectedPlace) return []
       const perCat = await Promise.all(

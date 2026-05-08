@@ -14,7 +14,6 @@ import type { Place } from '../types/lens'
 import {
   ALL_IMAGE_SOURCES,
   IMAGE_SOURCE_LABELS,
-  clearSpeciesImageCache,
   type ImageSource,
 } from '../api/speciesImage'
 import { buildBentoTiles, padToRectangle } from './bentoTiles'
@@ -104,12 +103,13 @@ function BentoPoster({
                   onChange={(e) => {
                     // Maintain canonical order from ALL_IMAGE_SOURCES so the
                     // fallback chain stays predictable when toggling.
+                    // No cache clear: the resolver caches per-source, so
+                    // toggling just re-reads what's already been fetched.
                     const next = e.target.checked
                       ? ALL_IMAGE_SOURCES.filter(
                           (s) => s === source || imageSources.includes(s),
                         )
                       : imageSources.filter((s) => s !== source)
-                    clearSpeciesImageCache()
                     onImageSourcesChange(next)
                   }}
                 />
