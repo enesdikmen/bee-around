@@ -6,11 +6,13 @@ import type {
   SpeciesCard,
   ThematicStripCard,
 } from '../../types/lens'
+import type { SignatureSpeciesCard } from './signatureSpecies'
 
 export type UseLensImageOverlayArgs = {
   topSpeciesData: SpeciesCard[]
   thematicStripCards: ThematicStripCard[]
   conservationSnapshot: ConservationSnapshot
+  signatureSpeciesData: SignatureSpeciesCard[]
   imageSources: ImageSource[]
 }
 
@@ -18,6 +20,7 @@ export type UseLensImageOverlayResult = {
   topSpeciesData: SpeciesCard[]
   thematicStripCards: ThematicStripCard[]
   conservationSnapshot: ConservationSnapshot
+  signatureSpeciesData: SignatureSpeciesCard[]
 }
 
 export const useLensImageOverlay = (
@@ -27,6 +30,7 @@ export const useLensImageOverlay = (
     topSpeciesData,
     thematicStripCards,
     conservationSnapshot,
+    signatureSpeciesData,
     imageSources,
   } = args
 
@@ -43,8 +47,14 @@ export const useLensImageOverlay = (
     collect(topSpeciesData)
     thematicStripCards.forEach((card) => collect(card.species))
     collect(conservationSnapshot.threatenedSpecies)
+    collect(signatureSpeciesData)
     return Array.from(map.values()).sort((a, b) => a.speciesKey - b.speciesKey)
-  }, [topSpeciesData, thematicStripCards, conservationSnapshot.threatenedSpecies])
+  }, [
+    topSpeciesData,
+    thematicStripCards,
+    conservationSnapshot.threatenedSpecies,
+    signatureSpeciesData,
+  ])
 
   const imageMapQuery = useQuery({
     queryKey: [
@@ -53,7 +63,10 @@ export const useLensImageOverlay = (
       imageSources.join(','),
     ],
     queryFn: async () => {
-      const map = new Map<number, { url: string; squareUrl?: string }>()
+      const map = new Map<
+        number,
+        { url: string; squareUrl?: string; source: ImageSource }
+      >()
       if (imageSources.length === 0) return map
       await Promise.all(
         speciesForImaging.map(async ({ speciesKey, canonicalName }) => {
@@ -62,7 +75,13 @@ export const useLensImageOverlay = (
             scientificName: canonicalName,
             sources: imageSources,
           })
-          if (img?.url) map.set(speciesKey, { url: img.url, squareUrl: img.squareUrl })
+          if (img?.url) {
+            map.set(speciesKey, {
+              url: img.url,
+              squareUrl: img.squareUrl,
+              source: img.source,
+            })
+          }
         }),
       )
       return map
@@ -78,7 +97,12 @@ export const useLensImageOverlay = (
     return <T extends SpeciesCard>(card: T): T => {
       const img = imageMap?.get(Number(card.id))
       if (!img) return card
-      return { ...card, imageUrl: img.url, squareImageUrl: img.squareUrl }
+      return {
+        ...card,
+        imageUrl: img.url,
+        squareImageUrl: img.squareUrl,
+        imageSource: img.source,
+      }
     }
   }, [imageMap])
 
@@ -101,10 +125,15 @@ export const useLensImageOverlay = (
     }),
     [conservationSnapshot, applyImage],
   )
+  const imagedSignatureSpecies = useMemo(
+    () => signatureSpeciesData.map(applyImage),
+    [signatureSpeciesData, applyImage],
+  )
 
   return {
     topSpeciesData: imagedTopSpecies,
     thematicStripCards: imagedThematicStripCards,
     conservationSnapshot: imagedConservationSnapshot,
+    signatureSpeciesData: imagedSignatureSpecies,
   }
 }

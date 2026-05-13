@@ -17,6 +17,10 @@
  *   3. `thematicStripCards[*]` — themed strips, processed in array order;
  *                                first `MAX_THEMATIC_STRIPS` with non-empty
  *                                survivors are kept.
+ *   4. `signatureSpeciesData`  — pool for the signature-species card.
+ *                                Filtered against everything above so the
+ *                                random pick never duplicates a species
+ *                                already shown elsewhere on the poster.
  *
  * Adding a new lens: insert it into the chain at the right priority and
  * make sure the hook returns multiple candidates so dedup can fall
@@ -49,6 +53,13 @@ export const dedupeSpeciesAcrossLenses = (data: LensData): LensData => {
     if (thematicStripCards.length >= MAX_THEMATIC_STRIPS) break
   }
 
+  // 4. Signature species: pass through the survivors so the card can pick
+  //    one at random from a clean pool. We don't claim here — there's no
+  //    lower-priority lens that would conflict.
+  const signatureSpeciesData = data.signatureSpeciesData.filter(
+    (sp) => !claimed.has(sp.id),
+  )
+
   return {
     ...data,
     conservationSnapshot: {
@@ -56,5 +67,6 @@ export const dedupeSpeciesAcrossLenses = (data: LensData): LensData => {
       threatenedSpecies,
     },
     thematicStripCards,
+    signatureSpeciesData,
   }
 }

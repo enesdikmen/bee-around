@@ -327,3 +327,31 @@
 .bento-mini__ribbon--danger {
   background: rgb(var(--color-accent));
 }
+.bento-mini__ribbon--signature {
+  background: rgb(var(--color-forest));
+}
+
+/* Image source badge shown on species cards (Wikidata / iNaturalist / GBIF). */
+.bento-image-source-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-family: var(--font-display);
+  font-size: 0.54rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  border: 1.5px solid rgb(var(--color-ink));
+  border-radius: 6px;
+  padding: 0.06rem 0.34rem;
+  line-height: 1.1;
+  z-index: 1;
+}
+
+.bento-image-source-badge--hero {
+  top: 10px;
+  right: 10px;
+  font-size: 0.58rem;
+  padding: 0.12rem 0.4rem;
+}

@@ -1,3 +1,5 @@
+import type { ImageSource } from '../api/speciesImage'
+
 export type PlaceBBox = {
   minLat: number
   maxLat: number
@@ -26,6 +28,8 @@ export type SpeciesCard = {
   imageUrl: string
   /** Pre-cropped 1:1 thumbnail for square strip tiles; falls back to imageUrl. */
   squareImageUrl?: string
+  /** Source that provided the currently shown image. */
+  imageSource?: ImageSource
   highlight: string
   taxonLine?: string
   popularity?: number

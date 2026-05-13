@@ -24,6 +24,7 @@ import { buildRecordsBreakdown } from './lensData/recordsBreakdown'
 import { placeGeoParams } from './lensData/shared'
 import { useThematicLensData } from './lensData/thematic'
 import { useTopSpeciesData } from './lensData/topSpecies'
+import { useLiveSignatureSpecies } from './lensData/signatureSpecies'
 import type {
   LensData,
   RecordsBreakdownItem,
@@ -199,10 +200,13 @@ export const useLensData = (
     return buildRecordsBreakdown(facetsSummary?.basisOfRecord ?? [], totalRecords)
   }, [facetsSummary, totalRecords])
 
+  const liveSignatureSpecies = useLiveSignatureSpecies(selectedPlace)
+
   const imaged = useLensImageOverlay({
     topSpeciesData,
     thematicStripCards,
     conservationSnapshot,
+    signatureSpeciesData: liveSignatureSpecies,
     imageSources,
   })
 
@@ -217,5 +221,6 @@ export const useLensData = (
     maxSeasonality,
     multilingualNames,
     recordsBreakdown,
+    signatureSpeciesData: imaged.signatureSpeciesData,
   })
 }

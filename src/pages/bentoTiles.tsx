@@ -21,6 +21,12 @@ import type { ReactNode } from 'react'
 import type { useLensData } from '../hooks/useLensData'
 import type { Anchor } from '../lib/gridPacker'
 import Globe from '../components/Globe'
+import { seededPick } from '../hooks/lensData/shared'
+import { IMAGE_SOURCE_LABELS } from '../api/speciesImage'
+// NOTE: ~36 MB JSON; bundled into the main chunk for now. When this card
+// graduates from the prototype, switch to a slimmed runtime payload or a
+// dynamic import. The shape matches `precompute_comparison_sample.ipynb`.
+import comparisonRaw from '../comparison_precompute.json'
 
 /** Corner the tile should be hard-pinned to. Resolved against the current
  *  grid size in {@link BentoPoster} so `bottom-right` follows the height. */
@@ -55,8 +61,8 @@ export const POSTER_ASPECTS: Record<
   PosterAspect,
   { label: string; gridW: number; fixedH?: number }
 > = {
-  horizontal: { label: 'Wide', gridW: 6 },
-  vertical:   { label: 'Tall', gridW: 4 },
+  horizontal: { label: 'Wide', gridW: 6, fixedH: 4 },
+  vertical:   { label: 'Tall', gridW: 4, fixedH: 6 },
   square:     { label: 'Square', gridW: 4, fixedH: 4 },
 }
 
@@ -110,6 +116,96 @@ const fmtPct = (share: number) => {
   return '<1%'
 }
 
+const sourceLabel = (source?: keyof typeof IMAGE_SOURCE_LABELS) =>
+  source ? IMAGE_SOURCE_LABELS[source] : null
+
+// ───────────────────────────────────────────────────────────────────────────
+// Comparison precompute — lookup helpers for the "how this place compares"
+// card. The notebook produces one row per curated city/country; here we
+// resolve the *currently selected* place to its closest matching row.
+// ───────────────────────────────────────────────────────────────────────────
+
+type ComparisonPercentiles = {
+  cohort: 'city' | 'country'
+  cohortSize: number
+  recordsPerKm2?: number | null
+  uniqueSpecies?: number | null
+  threatenedShare?: number | null
+}
+
+type ComparisonSignature = {
+  speciesKey: number
+  localCount: number
+  globalCount: number
+  localShare: number
+  globalShare: number
+  overRepresentationRatio: number
+}
+
+type ComparisonRow = {
+  id: string
+  kind: 'city' | 'country'
+  place: {
+    label: string
+    latitude?: number | null
+    longitude?: number | null
+    bbox?: { minLat: number; maxLat: number; minLon: number; maxLon: number } | null
+  }
+  percentiles?: ComparisonPercentiles | null
+  signatureSpecies?: ComparisonSignature[] | null
+}
+
+const COMPARISON_ROWS = (comparisonRaw as { rows: ComparisonRow[] }).rows ?? []
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
+/** Resolve the currently selected place to a precomputed comparison row.
+ *  Strategy: nearest city within 75 km (cohort=city), else country whose
+ *  bbox contains the point (cohort=country). Returns `null` if neither
+ *  matches — the card will then opt out. */
+function findComparisonRow(
+  latitude: number | undefined,
+  longitude: number | undefined,
+): ComparisonRow | null {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') return null
+  let bestCity: ComparisonRow | null = null
+  let bestCityDist = 75 // km cutoff
+  for (const row of COMPARISON_ROWS) {
+    if (row.kind !== 'city') continue
+    const p = row.place
+    if (typeof p.latitude !== 'number' || typeof p.longitude !== 'number') continue
+    const d = haversineKm(latitude, longitude, p.latitude, p.longitude)
+    if (d <= bestCityDist) {
+      bestCityDist = d
+      bestCity = row
+    }
+  }
+  if (bestCity) return bestCity
+  for (const row of COMPARISON_ROWS) {
+    if (row.kind !== 'country') continue
+    const bb = row.place.bbox
+    if (!bb) continue
+    if (
+      latitude >= bb.minLat &&
+      latitude <= bb.maxLat &&
+      longitude >= bb.minLon &&
+      longitude <= bb.maxLon
+    ) {
+      return row
+    }
+  }
+  return null
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // Card registry. Each entry is self-contained: type, size, placement, style,
 // and a `build` that decides eligibility and produces tile instances.
@@ -143,9 +239,10 @@ export const CARD_DEFS: CardDef[] = [
 
   {
     type: 'sightings',
-    size: { w: 1, h: 1 },
+    aspects: ['horizontal', 'vertical'],
+    size: { w: 1, h: 2 },
     className: 'bento-card bento-card--sightings accent-ink',
-    build: ({ data }) => {
+    build: ({ data, latitude, longitude }) => {
       // Show the headline number plus the top 3 kingdoms as compact %
       // chips so users see the *composition* of those sightings, not just
       // the raw count. Falls back gracefully if breakdown is empty.
@@ -156,6 +253,43 @@ export const CARD_DEFS: CardDef[] = [
             .slice(0, 3)
             .map((k) => ({ label: k.label, share: k.count / total }))
         : []
+
+      // Percentile context for the raw count: where does this place sit
+      // against its peer cohort (cities or countries) from the precomputed
+      // comparison sample? The 1×2 footprint gives room for two labelled
+      // bars — recording intensity and threatened share — without
+      // crowding the kingdom rows. This card now subsumes the old
+      // standalone "How this place compares" tile.
+      //
+      // NOTE: `uniqueSpecies` is intentionally omitted. The metric in the
+      // current `comparison_precompute.json` is saturated for ~94% of
+      // places (the precompute used `len(species_counts)` with a 1000-row
+      // facet cap). Once the notebook is rerun with paginated facet
+      // counts, add a `{ key: 'species', label: 'Species richness', pct:
+      // pcts.uniqueSpecies }` row to `ranks` below.
+      const cmpRow = findComparisonRow(latitude, longitude)
+      const pcts = cmpRow?.percentiles ?? null
+      const cohortLabel = pcts?.cohort === 'city' ? 'cities' : 'countries'
+      const cohortSize = pcts?.cohortSize
+      const ranks = pcts
+        ? [
+            { key: 'records', label: 'Recording intensity', pct: pcts.recordsPerKm2 },
+            { key: 'threat',  label: 'Threatened share',    pct: pcts.threatenedShare },
+          ].filter((r): r is { key: string; label: string; pct: number } =>
+            typeof r.pct === 'number' && Number.isFinite(r.pct),
+          )
+        : []
+      const ordinal = (n: number) => {
+        const v = n % 100
+        if (v >= 11 && v <= 13) return `${n}th`
+        switch (n % 10) {
+          case 1: return `${n}st`
+          case 2: return `${n}nd`
+          case 3: return `${n}rd`
+          default: return `${n}th`
+        }
+      }
+
       return [
         {
           id: 'sightings',
@@ -174,6 +308,46 @@ export const CARD_DEFS: CardDef[] = [
                     </li>
                   ))}
                 </ul>
+              )}
+              {ranks.length > 0 && (
+                <div className="bento-sightings__ranks">
+                  <p className="bento-sightings__ranks-head">
+                    How this place compares
+                    {typeof cohortSize === 'number' && (
+                      <span className="bento-sightings__ranks-sub">
+                        {' '}· vs {cohortSize.toLocaleString()} {cohortLabel}
+                      </span>
+                    )}
+                  </p>
+                  <ul className="bento-sightings__rank-list">
+                    {ranks.map((r) => {
+                      const pctVal = Math.max(0, Math.min(1, r.pct)) * 100
+                      return (
+                        <li key={r.key} className="bento-sightings__rank">
+                          <div className="bento-sightings__rank-head">
+                            <span className="bento-sightings__rank-label">{r.label}</span>
+                            <span className="bento-sightings__rank-pct">
+                              {ordinal(Math.max(1, Math.round(pctVal)))} pct
+                            </span>
+                          </div>
+                          <div
+                            className="bento-sightings__bar"
+                            role="meter"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={Math.round(pctVal)}
+                            aria-label={`${r.label} percentile`}
+                          >
+                            <span
+                              className="bento-sightings__bar-fill"
+                              style={{ width: `${pctVal}%` }}
+                            />
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
               )}
             </>
           ),
@@ -194,6 +368,11 @@ export const CARD_DEFS: CardDef[] = [
           id: 'hero',
           render: () => (
             <>
+              {sourceLabel(hero.imageSource) && (
+                <span className="bento-image-source-badge bento-image-source-badge--hero">
+                  {sourceLabel(hero.imageSource)}
+                </span>
+              )}
               <img src={hero.imageUrl} alt={hero.commonName} className="bento-hero__img" loading="lazy" />
               <div className="bento-hero__body">
                 <span className="bento-card__kicker">Most observed species</span>
@@ -225,6 +404,9 @@ export const CARD_DEFS: CardDef[] = [
         render: () => (
           <>
             <img src={sp.imageUrl} alt={sp.commonName} className="bento-mini__img" loading="lazy" />
+            {sourceLabel(sp.imageSource) && (
+              <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
+            )}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -262,6 +444,9 @@ export const CARD_DEFS: CardDef[] = [
                   className="bento-mini__img"
                   loading="lazy"
                 />
+                {sourceLabel(sp.imageSource) && (
+                  <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
+                )}
                 <span className="bento-mini__ribbon">{card.kicker}</span>
                 <span className="bento-mini__name">{sp.commonName}</span>
                 <span className="bento-mini__sci">{sp.scientificName}</span>
@@ -354,6 +539,9 @@ export const CARD_DEFS: CardDef[] = [
                 className="bento-mini__img"
                 loading="lazy"
               />
+              {sourceLabel(sp.imageSource) && (
+                <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
+              )}
               <span className="bento-mini__ribbon bento-mini__ribbon--danger">
                 At risk · {sp.iucnCategory}
               </span>
@@ -407,6 +595,54 @@ export const CARD_DEFS: CardDef[] = [
     },
   },
 
+  // Signature species — one species over-represented in this place vs the
+  // global GBIF baseline. Renders as a 1×1 species card (same visual
+  // language as `speciesMini` / `atRisk`) with a ratio chip. The pool is
+  // built by `useLiveSignatureSpecies` and trimmed by
+  // `dedupeSpeciesAcrossLenses`, so the pick here can never duplicate the
+  // hero, an at-risk species, or a thematic strip species. We seed the
+  // pick by place so the same place always shows the same signature.
+  {
+    type: 'signatureSpecies',
+    size: { w: 1, h: 1 },
+    className:
+      'bento-card bento-card--mini bento-card--signature accent-forest',
+    build: ({ data, placeName, latitude, longitude }) => {
+      const pool = data.signatureSpeciesData.filter((sp) => sp.imageUrl)
+      if (pool.length === 0) return []
+      const sp = seededPick(
+        pool,
+        `signature:${placeName}:${latitude ?? ''}:${longitude ?? ''}`,
+      )
+      const r = sp.overRepresentationRatio
+      const ratioLabel =
+        r >= 10 ? `${Math.round(r)}×` : `${r.toFixed(1)}×`
+      return [
+        {
+          id: 'signature-species',
+          render: () => (
+            <>
+              <img
+                src={sp.squareImageUrl ?? sp.imageUrl}
+                alt={sp.commonName}
+                className="bento-mini__img"
+                loading="lazy"
+              />
+              {sourceLabel(sp.imageSource) && (
+                <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
+              )}
+              <span className="bento-mini__ribbon bento-mini__ribbon--signature">
+                Signature · {ratioLabel}
+              </span>
+              <span className="bento-mini__name">{sp.commonName}</span>
+              <span className="bento-mini__sci">{sp.scientificName}</span>
+            </>
+          ),
+        },
+      ]
+    },
+  },
+
   {
     type: 'sources',
     size: { w: 2, h: 1 },
@@ -452,18 +688,31 @@ export interface BuildTilesArgs {
 export function buildBentoTiles(args: BuildTilesArgs): Tile[] {
   const ctx: CardBuildCtx = args
   const tiles: Tile[] = []
+  const aspectCfg = POSTER_ASPECTS[args.aspect]
+  const areaBudget =
+    typeof aspectCfg.fixedH === 'number'
+      ? aspectCfg.gridW * aspectCfg.fixedH
+      : null
+  let usedArea = 0
   for (const def of CARD_DEFS) {
     if (def.aspects && !def.aspects.includes(args.aspect)) continue
     for (const inst of def.build(ctx)) {
+      const w = inst.size?.w ?? def.size.w
+      const h = inst.size?.h ?? def.size.h
+      const area = w * h
+      // Fixed-size posters should not grow when new cards are added. Skip
+      // overflow tiles in registry order; we'll tune per-aspect card sets later.
+      if (areaBudget !== null && usedArea + area > areaBudget) continue
       tiles.push({
         id: inst.id,
-        w: inst.size?.w ?? def.size.w,
-        h: inst.size?.h ?? def.size.h,
+        w,
+        h,
         anchor: inst.anchor ?? def.anchor,
         pin: inst.pin ?? def.pin,
         className: inst.className ?? def.className,
         render: inst.render,
       })
+      usedArea += area
     }
   }
   return tiles

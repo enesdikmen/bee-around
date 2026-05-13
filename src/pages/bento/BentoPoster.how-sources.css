@@ -49,11 +49,12 @@
   font-weight: 500;
 }
 
-/* ── Sightings card (1×1) ─────────────────────────────── */
+/* ── Sightings card (1×2) ─────────────────────────────── */
 /* Layout (top → bottom):
      kicker   "SIGHTINGS ON GBIF"
      bignum   "2,376,448"
-     rows     three "33% Animalia" lines (kingdom mix) */
+     rows     three "33% Animalia" lines (kingdom mix)
+     rank     "Recording intensity" percentile bar + cohort sub */
 .bento-card--sightings {
   padding: 0.85rem 0.95rem;
   justify-content: flex-start;
@@ -104,6 +105,76 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Percentile rails at the bottom of the 1×2 sightings card. The wrapper
+   anchors to the card bottom via `margin-top:auto`; the inner `ul` stacks
+   one or more rails (Recording intensity, Threatened share). Visually
+   tuned for the darker `accent-ink` surface (gold accent on
+   white-on-dark). */
+.bento-sightings__ranks {
+  margin-top: auto;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.bento-sightings__ranks-head {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.bento-sightings__ranks-sub {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.55);
+}
+.bento-sightings__rank-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.bento-sightings__rank {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.bento-sightings__rank-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.bento-sightings__rank-label {
+  font-size: 0.72rem;
+  line-height: 1.15;
+  color: rgba(255, 255, 255, 0.9);
+}
+.bento-sightings__rank-pct {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  line-height: 1;
+  color: rgb(var(--color-gold));
+}
+.bento-sightings__bar {
+  position: relative;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.bento-sightings__bar-fill {
+  display: block;
+  height: 100%;
+  background: rgb(var(--color-gold));
+  border-radius: inherit;
 }
 
 /* ── Datasets footer ──────────────────────────────────── */

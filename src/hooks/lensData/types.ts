@@ -6,6 +6,7 @@ import type {
   SpeciesCard,
   ThematicStripCard,
 } from '../../types/lens'
+import type { SignatureSpeciesCard } from './signatureSpecies'
 
 export type RecordsBreakdownItem = {
   key: string
@@ -26,6 +27,12 @@ export type LensData = {
   maxSeasonality: number
   multilingualNames: { language: string; name: string }[]
   recordsBreakdown: RecordsBreakdownItem[]
+  /** Live-computed signature species (over-represented vs global baseline).
+   *  A small pool (after cross-lens dedupe) of candidates ranked by
+   *  `localShare / globalShare`. The signature-species card picks one at
+   *  random from this list. Empty while loading, undersampled, or
+   *  fully claimed by higher-priority lenses. */
+  signatureSpeciesData: SignatureSpeciesCard[]
 }
 
 export type UseLensDataOptions = {
