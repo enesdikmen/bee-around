@@ -1,0 +1,108 @@
+/* ═══════════════════════════════════════════════════════
+   BentoPoster — print / PDF stylesheet (Track A)
+
+   Goal: produce a high-fidelity, print-ready PDF when the user
+   triggers the browser's print dialog ("Save as PDF").
+
+   Design notes:
+   - Text and inline SVG remain vector — only raster images and
+     the WebGL globe canvas are rasterised at the print DPI.
+   - `@page { size: ... }` is injected dynamically from JS so the
+     page exactly matches the current grid aspect ratio. The rule
+     below is only a fallback for "Print" invoked from the menu.
+   - Everything print-related lives in this file. No tile component
+     needs to know about PDF generation.
+   ═══════════════════════════════════════════════════════ */
+
+@media print {
+  /* Fallback page — JS injects an exact-aspect rule with higher
+     specificity (via <style id="lynxee-print-page">) before printing. */
+  @page {
+    size: A2 portrait;
+    margin: 0;
+  }
+
+  /* Make sure card backgrounds, accent fills, and the shell gradient
+     actually print. Without this, Chrome strips backgrounds. */
+  html,
+  body,
+  .bento-shell,
+  .bento-card,
+  .bento-grid-wrap,
+  .bento-grid {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    overflow: hidden !important;
+  }
+
+  /* Shell loses its viewport padding and min-height in print; the
+     poster fills the page edge-to-edge. */
+  .bento-shell {
+    min-height: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide interactive chrome that has no place on a printed poster. */
+  .bento-toolbar,
+  .bento-lock-btn,
+  .bento-grid-loading {
+    display: none !important;
+  }
+
+  /* Remove the dim/blur applied while data loads — if the user prints
+     mid-load, at least the partial poster prints crisply. */
+  .bento-grid-wrap--loading .bento-grid {
+    filter: none !important;
+  }
+
+  /* Grid fills the page. The inline `aspect-ratio` style on .bento-grid
+     stays, but the printed page (set via JS @page) already matches it,
+     so width:100% + height:100% lands on the same shape. */
+  .bento-grid-wrap {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+  .bento-grid {
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    /* Keep the on-screen gap proportions; absolute units are more
+       predictable than clamp(vw) at print resolution. */
+    gap: 2.5mm !important;
+    padding: 3mm !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Framer Motion sets inline transforms/opacity. On a settled poster
+     these resolve to opacity:1, transform:none, but defensively force
+     the printed state so an in-flight animation never bleeds into PDF. */
+  .bento-grid > * {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Stronger borders read better at print scale — the 2.5px screen
+     border can appear hairline-thin on a large A2 sheet. */
+  .bento-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  /* Filler tiles exist purely for layout; on print, leave them in
+     place but make them visually quieter (they already are at 0.45
+     opacity — keep that). No override needed. */
+}

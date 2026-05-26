@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import CitySearch from '../components/CitySearch'
 import { useLensData, type LensData } from '../hooks/useLensData'
 import { packWithRetries, type BoxSpec, type Placement } from '../lib/gridPacker'
+import { printPosterToPdf } from '../lib/printPoster'
 import { syncShareToLocation } from '../lib/shareToken'
 import type { Place } from '../types/lens'
 import { ALL_IMAGE_SOURCES } from '../api/speciesImage'
@@ -112,6 +113,15 @@ function BentoPoster({
     } catch {
       // Clipboard blocked (e.g. insecure context) — leave URL in address bar.
     }
+  }
+
+  const handleDownloadPdf = () => {
+    printPosterToPdf({
+      gridW: GRID_W,
+      gridH,
+      placeName,
+      seed: posterSeed,
+    })
   }
 
   const tiles = useMemo(() => {
@@ -243,6 +253,15 @@ function BentoPoster({
           title="Copy a shareable link to this exact poster"
         >
           {shareCopied ? '✓ Link copied' : '↗ Share'}
+        </button>
+        <button
+          type="button"
+          className="bento-toolbar__btn"
+          onClick={handleDownloadPdf}
+          disabled={isLoadingSnapshot}
+          title="Open the browser print dialog — choose ‘Save as PDF’"
+        >
+          ⤓ PDF
         </button>
       </div>
 
