@@ -45,8 +45,18 @@ export type Tile = {
   anchor?: Anchor
   /** Hard pin — packer is forced to put the tile in this corner. */
   pin?: PinCorner
+  /** Exact-cell pin (overrides `pin`). Used by the lock-card feature to
+   *  freeze a tile to its previous placement across Regenerate. */
+  pinXY?: { x: number; y: number }
   className: string
   render: () => ReactNode
+  /** Stable slot identifier used by the per-card lock feature. Tiles
+   *  without a slotId are not lockable (e.g. fillers). */
+  slotId?: string
+  /** Species ids (as in `SpeciesCardBase.id`) that this tile is showing.
+   *  Used to prevent the same species appearing twice across the
+   *  locked / freshly-generated boundary. */
+  speciesIds?: string[]
 }
 
 type LensData = ReturnType<typeof useLensData>
@@ -87,8 +97,12 @@ export type TileInstance = {
   size?: TileSize
   anchor?: Anchor
   pin?: PinCorner
-  className?: string
-}
+  className?: string  /** Stable identifier of the slot this instance fills. Survives content
+   *  rotation (e.g. `mini-0` stays the same even when the species in slot
+   *  0 changes). Required for tiles that should be lockable. */
+  slotId?: string
+  /** Species ids (matching `SpeciesCardBase.id`) shown by this tile. */
+  speciesIds?: string[]}
 
 /** Definition of a card type. */
 export type CardDef = {
@@ -223,6 +237,7 @@ export const CARD_DEFS: CardDef[] = [
     build: ({ placeName, latitude, longitude }) => [
       {
         id: 'title',
+        slotId: 'title',
         render: () => (
           <div className="bento-title__layout">
             {typeof latitude === 'number' && typeof longitude === 'number' && (
@@ -308,6 +323,7 @@ export const CARD_DEFS: CardDef[] = [
       return [
         {
           id: 'sightings',
+          slotId: 'sightings',
           render: () => (
             <>
               <span className="bento-card__kicker">Sightings on GBIF</span>
@@ -395,6 +411,8 @@ export const CARD_DEFS: CardDef[] = [
       return [
         {
           id: 'hero',
+          slotId: 'hero',
+          speciesIds: [hero.id],
           render: () => (
             <>
               {sourceLabel(hero.imageSource) && (
@@ -427,8 +445,10 @@ export const CARD_DEFS: CardDef[] = [
     className: 'bento-card bento-card--mini accent-paper',
     build: ({ data, aspect }) => {
       const max = SPECIES_MINI_COUNT_BY_ASPECT[aspect]
-      return data.topSpeciesData.slice(1, 1 + max).map((sp) => ({
+      return data.topSpeciesData.slice(1, 1 + max).map((sp, idx) => ({
         id: `sp-${sp.id}`,
+        slotId: `mini-${idx}`,
+        speciesIds: [sp.id],
         render: () => (
           <>
             <img src={sp.imageUrl} alt={sp.commonName} className="bento-mini__img" loading="lazy" />
@@ -461,6 +481,8 @@ export const CARD_DEFS: CardDef[] = [
           if (!sp) return null
           return {
             id: `thematic-${card.id}`,
+            slotId: `thematic-${card.id}`,
+            speciesIds: [sp.id],
             className:
               'bento-card bento-card--mini ' +
               (index % 2 === 0 ? 'accent-gold' : 'accent-forest'),
@@ -560,6 +582,7 @@ export const CARD_DEFS: CardDef[] = [
       return [
         {
           id: 'seasonality',
+          slotId: 'seasonality',
           render: () => (
             <div className="bento-season-how">
               <div className="bento-season-how__left">
@@ -653,6 +676,8 @@ export const CARD_DEFS: CardDef[] = [
       )
       return shuffled.slice(0, 2).map((sp, i) => ({
         id: `at-risk-${i}`,
+        slotId: `at-risk-${i}`,
+        speciesIds: [sp.id],
         render: () => (
           <>
             <img
@@ -704,6 +729,8 @@ export const CARD_DEFS: CardDef[] = [
       return [
         {
           id: 'signature-species',
+          slotId: 'signature-species',
+          speciesIds: [sp.id],
           render: () => (
             <>
               <img
@@ -738,6 +765,7 @@ export const CARD_DEFS: CardDef[] = [
     build: ({ data }) => [
       {
         id: 'sources',
+        slotId: 'sources',
         render: () => (
           <>
             <span className="bento-card__kicker">Sources</span>
@@ -800,6 +828,8 @@ export function buildBentoTiles(args: BuildTilesArgs): Tile[] {
         pin: inst.pin ?? def.pin,
         className: inst.className ?? def.className,
         render: inst.render,
+        slotId: inst.slotId,
+        speciesIds: inst.speciesIds,
       })
       usedArea += area
     }
