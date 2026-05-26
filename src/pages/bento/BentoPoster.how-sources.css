@@ -64,8 +64,7 @@
   display: block;
   font-family: var(--font-display);
   /* Sized to fit a 7-digit grouped number (e.g. "2,376,448") inside a
-     1×1 cell on the wide poster; the clamp scales it down on Tall/Square
-     where cells are narrower. */
+    1×1 cell while staying readable across viewport sizes. */
   font-size: clamp(1.05rem, 2.2vw, 1.7rem);
   line-height: 1;
   letter-spacing: -0.02em;

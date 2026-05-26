@@ -13,8 +13,6 @@
  * else changes. Removing one: delete its entry.
  *
  * Future hooks (not implemented yet — the shape is ready for them):
- *   - Per-aspect sizes for vertical / square posters: add a `sizesByAspect`
- *     field next to `size` and resolve it in {@link buildBentoTiles}.
  *   - Priority / max-instance caps per card type for tight layouts.
  */
 import type { ReactNode } from 'react'
@@ -22,7 +20,7 @@ import type { useLensData } from '../hooks/useLensData'
 import type { Anchor } from '../lib/gridPacker'
 import Globe from '../components/Globe'
 import { seededPick, seededShuffle } from '../hooks/lensData/shared'
-import { SPECIES_MINI_COUNT_BY_ASPECT } from '../data/lensSelection'
+import { SPECIES_MINI_COUNT } from '../data/lensSelection'
 import { IMAGE_SOURCE_LABELS } from '../api/speciesImage'
 // NOTE: ~36 MB JSON; bundled into the main chunk for now. When this card
 // graduates from the prototype, switch to a slimmed runtime payload or a
@@ -61,21 +59,10 @@ export type Tile = {
 
 type LensData = ReturnType<typeof useLensData>
 
-/** Poster shapes the user can pick from in the toolbar. Each aspect resolves
- *  to a grid width (and optional fixed height) in {@link POSTER_ASPECTS}. */
-export type PosterAspect = 'horizontal' | 'vertical' | 'square'
-
-/** Grid dimensions per aspect. `fixedH` forces the packer to use that exact
- *  height (used by the curated square poster); otherwise height is derived
- *  from total tile area. */
-export const POSTER_ASPECTS: Record<
-  PosterAspect,
-  { label: string; gridW: number; fixedH?: number }
-> = {
-  horizontal: { label: 'Wide', gridW: 6, fixedH: 4 },
-  vertical:   { label: 'Tall', gridW: 4, fixedH: 6 },
-  square:     { label: 'Square', gridW: 4, fixedH: 4 },
-}
+/** Fixed poster dimensions. Size selection is intentionally removed. */
+export const POSTER_GRID_W = 6
+export const POSTER_GRID_H = 4
+export const POSTER_GRID_AREA = POSTER_GRID_W * POSTER_GRID_H
 
 /** What `buildBentoTiles` hands to each card. Lean on purpose. */
 export type CardBuildCtx = {
@@ -85,7 +72,6 @@ export type CardBuildCtx = {
   /** Poster/content seed bumped by Regenerate; cards can key random picks to it. */
   contentSeed: number
   data: LensData
-  aspect: PosterAspect
 }
 
 /** What a card's `build()` returns. Per-instance overrides are optional and
@@ -115,8 +101,6 @@ export type CardDef = {
   pin?: PinCorner
   /** Default className. */
   className: string
-  /** Restrict this card to specific poster aspects. Undefined = all aspects. */
-  aspects?: PosterAspect[]
   /** Produce tile instances for the current context. Return `[]` to skip. */
   build: (ctx: CardBuildCtx) => TileInstance[]
 }
@@ -257,7 +241,6 @@ export const CARD_DEFS: CardDef[] = [
 
   {
     type: 'sightings',
-    aspects: ['horizontal', 'vertical'],
     size: { w: 1, h: 2 },
     className: 'bento-card bento-card--sightings accent-ink',
     build: ({ data, latitude, longitude }) => {
@@ -443,9 +426,8 @@ export const CARD_DEFS: CardDef[] = [
     type: 'speciesMini',
     size: { w: 1, h: 1 },
     className: 'bento-card bento-card--mini accent-paper',
-    build: ({ data, aspect }) => {
-      const max = SPECIES_MINI_COUNT_BY_ASPECT[aspect]
-      return data.topSpeciesData.slice(1, 1 + max).map((sp, idx) => ({
+    build: ({ data }) => {
+      return data.topSpeciesData.slice(1, 1 + SPECIES_MINI_COUNT).map((sp, idx) => ({
         id: `sp-${sp.id}`,
         slotId: `mini-${idx}`,
         speciesIds: [sp.id],
@@ -468,7 +450,6 @@ export const CARD_DEFS: CardDef[] = [
 
   {
     type: 'thematicStrip',
-    aspects: ['horizontal', 'vertical'],
     size: { w: 1, h: 1 },
     // One species per thematic card, rendered like a `speciesMini` with the
     // theme kicker shown as a small ribbon over the image. Alternates the
@@ -795,31 +776,22 @@ export interface BuildTilesArgs {
   data: LensData
   /** Regenerate seed used for tile-level random picks (species cards, etc.). */
   contentSeed: number
-  /** Which poster shape we are building for. Cards may opt out per aspect
-   *  via their `aspects` field, and may also adapt their content (e.g.
-   *  `speciesMini` emits fewer tiles in square mode). */
-  aspect: PosterAspect
 }
 
 /** Walk the card registry and produce concrete tiles for the current data. */
 export function buildBentoTiles(args: BuildTilesArgs): Tile[] {
   const ctx: CardBuildCtx = args
   const tiles: Tile[] = []
-  const aspectCfg = POSTER_ASPECTS[args.aspect]
-  const areaBudget =
-    typeof aspectCfg.fixedH === 'number'
-      ? aspectCfg.gridW * aspectCfg.fixedH
-      : null
+  const areaBudget = POSTER_GRID_AREA
   let usedArea = 0
   for (const def of CARD_DEFS) {
-    if (def.aspects && !def.aspects.includes(args.aspect)) continue
     for (const inst of def.build(ctx)) {
       const w = inst.size?.w ?? def.size.w
       const h = inst.size?.h ?? def.size.h
       const area = w * h
-      // Fixed-size posters should not grow when new cards are added. Skip
-      // overflow tiles in registry order; we'll tune per-aspect card sets later.
-      if (areaBudget !== null && usedArea + area > areaBudget) continue
+      // Fixed-size poster should not grow when new cards are added.
+      // Skip overflow tiles in registry order.
+      if (usedArea + area > areaBudget) continue
       tiles.push({
         id: inst.id,
         w,
@@ -838,9 +810,9 @@ export function buildBentoTiles(args: BuildTilesArgs): Tile[] {
 }
 
 /** Pad with invisible 1×1 fillers. When `targetArea` is set, pad up to that
- *  exact total area (used for fixed-height posters like the 4×4 square).
- *  Otherwise, pad to the next multiple of `gridW` so a flexible-height
- *  rectangle can be tiled with no leftover. */
+ *  exact total area (used by the fixed 6×4 poster).
+ *  Otherwise, pad to the next multiple of `gridW` so a rectangle can be
+ *  tiled with no leftover. */
 export function padToRectangle(
   tiles: Tile[],
   gridW: number,

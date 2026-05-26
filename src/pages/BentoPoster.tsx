@@ -11,50 +11,40 @@ import CitySearch from '../components/CitySearch'
 import { useLensData, type LensData } from '../hooks/useLensData'
 import { packWithRetries, type BoxSpec, type Placement } from '../lib/gridPacker'
 import type { Place } from '../types/lens'
-import { IMAGE_SOURCE_LABELS } from '../api/speciesImage'
-import type { ImageSourceConfig } from '../App'
+import { ALL_IMAGE_SOURCES } from '../api/speciesImage'
 import {
   buildBentoTiles,
   padToRectangle,
-  POSTER_ASPECTS,
-  type PosterAspect,
+  POSTER_GRID_AREA,
+  POSTER_GRID_H,
+  POSTER_GRID_W,
   type Tile,
 } from './bentoTiles'
 import './BentoPoster.css'
 
-const ASPECT_ORDER: PosterAspect[] = ['horizontal', 'vertical', 'square']
-
 interface Props {
   selectedPlace: Place
   onPlaceChange: (place: Place) => void
-  imageSourceConfig: ImageSourceConfig
-  onImageSourceConfigChange: (next: ImageSourceConfig) => void
 }
 
 function BentoPoster({
   selectedPlace,
   onPlaceChange,
-  imageSourceConfig,
-  onImageSourceConfigChange,
 }: Props) {
   // Single seed for poster-level variation. Layout and data already consume it;
   // future style themes should derive from this same seed as well.
   const [posterSeed, setPosterSeed] = useState(1)
   const [layoutShuffleSeed, setLayoutShuffleSeed] = useState(1)
-  const [aspect, setAspect] = useState<PosterAspect>('horizontal')
-  const aspectCfg = POSTER_ASPECTS[aspect]
-  const GRID_W = aspectCfg.gridW
+  const GRID_W = POSTER_GRID_W
 
   const placeName = selectedPlace?.label?.split(',')[0]?.trim() ?? 'Pick a place'
   const latitude = selectedPlace?.latitude
   const longitude = selectedPlace?.longitude
 
-  // Active sources, in priority order. This is the only thing the data layer
-  // ever sees — `imageSourceConfig` is a UI-only concern.
-  const effectiveSources = useMemo(
-    () => imageSourceConfig.filter((c) => c.active).map((c) => c.source),
-    [imageSourceConfig],
-  )
+  // Source priority is intentionally fixed in UI for a simpler experience.
+  // To change fallback order later, edit `ALL_IMAGE_SOURCES` in
+  // `src/api/speciesImage.ts`.
+  const effectiveSources = ALL_IMAGE_SOURCES
 
   const data = useLensData(selectedPlace, {
     imageSources: effectiveSources,
@@ -91,14 +81,14 @@ function BentoPoster({
   // ── Per-card lock feature ─────────────────────────────────────────────
   // A locked tile freezes both its content (render closure + species ids)
   // and its grid position across Regenerate. Locks are keyed by `slotId`
-  // (stable across content rotation, e.g. `mini-0`). When place / aspect /
-  // image sources change the locked content becomes meaningless, so we
+  // (stable across content rotation, e.g. `mini-0`). When place or image
+  // sources change the locked content becomes meaningless, so we
   // drop all locks.
   type Lock = { tile: Tile; x: number; y: number }
   const [locks, setLocks] = useState<Map<string, Lock>>(new Map())
   useEffect(() => {
     setLocks((prev) => (prev.size === 0 ? prev : new Map()))
-  }, [selectedPlace?.id, aspect, effectiveSources.join(',')])
+  }, [selectedPlace?.id, effectiveSources.join(',')])
 
   const tiles = useMemo(() => {
     if (!displayData) return []
@@ -108,7 +98,6 @@ function BentoPoster({
       longitude,
       data: displayData,
       contentSeed: posterSeed,
-      aspect,
     })
 
     // Apply locks: replace locked slots with their frozen snapshot, drop
@@ -139,19 +128,12 @@ function BentoPoster({
       merged.push({ ...lock.tile, pinXY: { x: lock.x, y: lock.y } })
     }
 
-    // Fixed-height posters (square) need exact area padding; flexible-height
-    // posters just need the total area to be a multiple of GRID_W.
-    const targetArea =
-      typeof aspectCfg.fixedH === 'number' ? GRID_W * aspectCfg.fixedH : undefined
-    return padToRectangle(merged, GRID_W, targetArea)
-  }, [placeName, latitude, longitude, displayData, aspect, aspectCfg.fixedH, GRID_W, posterSeed, locks])
+    return padToRectangle(merged, GRID_W, POSTER_GRID_AREA)
+  }, [placeName, latitude, longitude, displayData, GRID_W, posterSeed, locks])
 
-  // Pack the tiles. For flexible-height posters the area is a multiple of
-  // GRID_W so the exact-height rectangle should always fit; we allow +2 rows
-  // of slack in case anchor constraints make the tightest layout infeasible.
-  // For fixed-height posters we lock to exactly that height.
+  // Pack the tiles into the fixed poster grid.
   //
-  // We cache the pack result and re-use it whenever the seed/aspect/tile-set
+  // We cache the pack result and re-use it whenever the seed/tile-set
   // is unchanged. This is what makes a Lock toggle a pure metadata update:
   // locking a card adds `pinXY` to one tile but does not change the tile id
   // list, so the cached placements are kept and nothing else on the poster
@@ -162,7 +144,7 @@ function BentoPoster({
     gridH: number
   } | null>(null)
   const { placements, gridH } = useMemo(() => {
-    const cacheKey = `${posterSeed}|${layoutShuffleSeed}|${aspect}|${GRID_W}|${tiles
+    const cacheKey = `${posterSeed}|${layoutShuffleSeed}|${GRID_W}|${tiles
       .map((t) => t.id)
       .join(',')}`
     if (packCacheRef.current?.key === cacheKey) {
@@ -171,16 +153,12 @@ function BentoPoster({
         gridH: packCacheRef.current.gridH,
       }
     }
-    const exactH = tiles.reduce((s, t) => s + t.w * t.h, 0) / GRID_W
-    const startH = aspectCfg.fixedH ?? exactH
-    const endH = aspectCfg.fixedH ?? exactH + 2
-    for (let h = startH; h <= endH; h++) {
+    const h = POSTER_GRID_H
       // Hard pins are resolved against the *current* grid height attempt so
       // that e.g. `bottom-right` always means the actual bottom-right corner.
       const specs: BoxSpec[] = tiles.map((t) => {
         // Lock-card pin: freeze to an exact (x,y) regardless of corner.
-        // Clamp y so a tile locked on a taller layout still fits when the
-        // grid shrinks (defensive — we already drop locks on aspect change).
+        // Clamp y defensively to guarantee locked tiles stay in-bounds.
         if (t.pinXY) {
           const x = Math.max(0, Math.min(GRID_W - t.w, t.pinXY.x))
           const y = Math.max(0, Math.min(h - t.h, t.pinXY.y))
@@ -202,9 +180,8 @@ function BentoPoster({
         packCacheRef.current = { key: cacheKey, placements: r.placements, gridH: h }
         return { placements: r.placements, gridH: h }
       }
-    }
-    return { placements: [], gridH: startH }
-  }, [tiles, posterSeed, layoutShuffleSeed, GRID_W, aspectCfg.fixedH, aspect])
+    return { placements: [], gridH: POSTER_GRID_H }
+  }, [tiles, posterSeed, layoutShuffleSeed, GRID_W])
 
   const placementById = useMemo(() => {
     const m = new Map<string, (typeof placements)[number]>()
@@ -227,51 +204,6 @@ function BentoPoster({
     <div className="bento-shell">
       <div className="bento-toolbar">
         <CitySearch selected={selectedPlace} onSelect={onPlaceChange} />
-        <span className="bento-toolbar__sources" title="Image sources — checkbox toggles active state, arrows reorder priority">
-          <span className="bento-toolbar__sources-label">Images:</span>
-          {imageSourceConfig.map((entry, i) => {
-            const setActive = (active: boolean) =>
-              onImageSourceConfigChange(
-                imageSourceConfig.map((c) =>
-                  c.source === entry.source ? { ...c, active } : c,
-                ),
-              )
-            const swap = (j: number) => {
-              if (j < 0 || j >= imageSourceConfig.length) return
-              const next = imageSourceConfig.slice()
-              ;[next[i], next[j]] = [next[j], next[i]]
-              onImageSourceConfigChange(next)
-            }
-            return (
-              <span key={entry.source} className="bento-toolbar__source">
-                <label className="bento-toolbar__check">
-                  <input
-                    type="checkbox"
-                    checked={entry.active}
-                    onChange={(e) => setActive(e.target.checked)}
-                  />
-                  {IMAGE_SOURCE_LABELS[entry.source]}
-                </label>
-                <button
-                  type="button"
-                  className="bento-toolbar__rank"
-                  onClick={() => swap(i - 1)}
-                  disabled={i === 0}
-                  title="Move up in priority"
-                  aria-label={`Move ${IMAGE_SOURCE_LABELS[entry.source]} up`}
-                >▲</button>
-                <button
-                  type="button"
-                  className="bento-toolbar__rank"
-                  onClick={() => swap(i + 1)}
-                  disabled={i === imageSourceConfig.length - 1}
-                  title="Move down in priority"
-                  aria-label={`Move ${IMAGE_SOURCE_LABELS[entry.source]} down`}
-                >▼</button>
-              </span>
-            )
-          })}
-        </span>
         <button
           type="button"
           className="bento-toolbar__btn bento-toolbar__btn--primary"
@@ -280,28 +212,11 @@ function BentoPoster({
         >
           ↻ Regenerate
         </button>
-        <span className="bento-toolbar__aspects" role="group" aria-label="Poster shape">
-          {ASPECT_ORDER.map((a) => (
-            <button
-              key={a}
-              type="button"
-              className={
-                'bento-toolbar__btn' +
-                (aspect === a ? ' bento-toolbar__btn--primary' : '')
-              }
-              onClick={() => setAspect(a)}
-              title={`${POSTER_ASPECTS[a].label} poster`}
-              aria-pressed={aspect === a}
-            >
-              {POSTER_ASPECTS[a].label}
-            </button>
-          ))}
-        </span>
       </div>
 
       <div className={`bento-grid-wrap${isLoadingSnapshot ? ' bento-grid-wrap--loading' : ''}`}>
         <div
-          className={`bento-grid bento-grid--${aspect}`}
+          className="bento-grid"
           style={{
             gridTemplateColumns: `repeat(${GRID_W}, 1fr)`,
             gridTemplateRows: `repeat(${gridH}, 1fr)`,

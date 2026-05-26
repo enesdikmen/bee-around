@@ -25,75 +25,6 @@ img[src=""] { visibility: hidden; }
   align-items: center;
   gap: 0.5rem;
 }
-.bento-toolbar__select {
-  appearance: none;
-  border: 2px solid rgb(var(--color-ink));
-  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='%23000' stroke-width='1.5' d='M1 1l4 4 4-4'/></svg>") no-repeat right 0.6rem center;
-  padding: 0.4rem 1.8rem 0.4rem 0.7rem;
-  border-radius: 10px;
-  font: inherit;
-  font-weight: 600;
-  font-size: 0.8rem;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
-}
-.bento-toolbar__check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.4rem 0.7rem;
-  border: 2px solid rgb(var(--color-ink));
-  background: #fff;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
-}
-.bento-toolbar__check input { margin: 0; cursor: pointer; }
-.bento-toolbar__sources {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-.bento-toolbar__source {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-}
-.bento-toolbar__rank {
-  appearance: none;
-  border: 2px solid rgb(var(--color-ink));
-  background: #fff;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
-  border-radius: 6px;
-  font-size: 0.6rem;
-  line-height: 1;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 1.5px 1.5px 0 0 rgb(var(--color-ink));
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.bento-toolbar__rank:hover:not(:disabled) {
-  background: rgb(var(--color-gold));
-}
-.bento-toolbar__rank:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-.bento-toolbar__sources-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-right: 0.1rem;
-}
 .bento-toolbar__btn {
   appearance: none;
   border: 2px solid rgb(var(--color-ink));
@@ -161,17 +92,6 @@ img[src=""] { visibility: hidden; }
 @keyframes bento-loading-pulse {
   0%, 100% { opacity: 0.45; transform: scale(0.9); }
   50% { opacity: 1; transform: scale(1); }
-}
-/* For tall/square posters, cap by viewport height instead of width so the
-   whole poster stays visible without scrolling. `aspect-ratio` is set inline
-   from the packer, so the width auto-derives from the capped height. */
-.bento-grid--vertical,
-.bento-grid--square {
-  /* Subtract toolbar + page padding so the poster sits inside the viewport. */
-  max-height: calc(100vh - 7rem);
-  max-width: 100%;
-  width: auto;
-  height: auto;
 }
 @media (max-width: 700px) {
   /* On phones, drop the strict aspect ratio — let cards grow as tall as

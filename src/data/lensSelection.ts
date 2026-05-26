@@ -79,15 +79,11 @@ export const EXTRA_MINI_SLOT_RULES: HeroSlotRule[] = [
 /** Number of extra mini species cards to add from EXTRA_MINI_SLOT_RULES. */
 export const EXTRA_MINI_SLOT_COUNT = 2
 
-/** How many mini species tiles each poster aspect renders. */
-export const SPECIES_MINI_COUNT_BY_ASPECT = {
-  horizontal: 7,
-  vertical: 5,
-  square: 3,
-} as const
+/** How many mini species tiles the fixed poster layout renders. */
+export const SPECIES_MINI_COUNT = 7
 
-/** Highest mini-count across aspects; used to keep top-species pools sufficiently sized. */
-export const MAX_SPECIES_MINI_COUNT = Math.max(...Object.values(SPECIES_MINI_COUNT_BY_ASPECT))
+/** Used to keep top-species pools sufficiently sized. */
+export const MAX_SPECIES_MINI_COUNT = SPECIES_MINI_COUNT
 
 export type InSeasonRule = {
   facetLimit: number
