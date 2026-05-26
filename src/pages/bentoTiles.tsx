@@ -478,6 +478,9 @@ export const CARD_DEFS: CardDef[] = [
                 <span className="bento-mini__ribbon">{card.kicker}</span>
                 <span className="bento-mini__name">{sp.commonName}</span>
                 <span className="bento-mini__sci">{sp.scientificName}</span>
+                {sp.popularity ? (
+                  <span className="bento-mini__count">{sp.popularity.toLocaleString()}</span>
+                ) : null}
               </>
             ),
           }
@@ -612,6 +615,9 @@ export const CARD_DEFS: CardDef[] = [
             </span>
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
+            {sp.popularity ? (
+              <span className="bento-mini__count">{sp.popularity.toLocaleString()}</span>
+            ) : null}
           </>
         ),
       }))
@@ -660,6 +666,9 @@ export const CARD_DEFS: CardDef[] = [
               </span>
               <span className="bento-mini__name">{sp.commonName}</span>
               <span className="bento-mini__sci">{sp.scientificName}</span>
+              {sp.popularity ? (
+                <span className="bento-mini__count">{sp.popularity.toLocaleString()}</span>
+              ) : null}
             </>
           ),
         },

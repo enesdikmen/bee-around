@@ -6,14 +6,25 @@ import {
   fallbackConservationSnapshot,
 } from '../../data/lensFallbacks'
 import type { ConservationSnapshot, Place, ThreatenedSpecies } from '../../types/lens'
-import { placeGeoParams } from './shared'
+import { placeGeoParams, seededPick } from './shared'
 import { speciesCardBase } from './speciesCards'
 
 const THREATENED_CATS = ['CR', 'EN', 'VU'] as const
 const ALL_CATS = ['LC', 'NT', 'VU', 'EN', 'CR', 'DD'] as const
+const THREATENED_FACET_LIMIT = 5
+const THREATENED_PICK_FROM_TOP_PER_GROUP = 3
+
+type ThreatenedCandidate = {
+  speciesKey: number
+  count: number
+  group: string
+  species: Awaited<ReturnType<typeof fetchSpecies>>
+  winningCat: (typeof THREATENED_CATS)[number]
+}
 
 export const useConservationSnapshot = (
   selectedPlace: Place | undefined,
+  contentSeed: number,
 ): ConservationSnapshot => {
   const speciesCountsQuery = useQuery({
     queryKey: ['iucnSpeciesCounts', selectedPlace?.id],
@@ -44,7 +55,7 @@ export const useConservationSnapshot = (
 
   const threatenedSpeciesQuery = useQuery({
     queryKey: ['threatenedSpecies', selectedPlace?.id],
-    queryFn: async ({ signal }): Promise<ThreatenedSpecies[]> => {
+    queryFn: async ({ signal }): Promise<ThreatenedCandidate[]> => {
       if (!selectedPlace) return []
 
       // Cascade: use the highest severity that has results.
@@ -54,7 +65,7 @@ export const useConservationSnapshot = (
         const response = await fetchOccurrenceFacets({
           ...placeGeoParams(selectedPlace),
           facetFields: ['speciesKey'],
-          facetLimit: 5,
+          facetLimit: THREATENED_FACET_LIMIT,
           iucnRedListCategory: cat,
           signal,
         })
@@ -76,29 +87,21 @@ export const useConservationSnapshot = (
         }),
       )
 
-      // Diversity cap: max 1 species per group. For animals we cap by
-      // class (mammal ≠ bird ≠ reptile), for everything else by kingdom
-      // (all plants = 1 slot, all fungi = 1 slot) because plant classes
-      // (Magnoliopsida, Liliopsida …) all look the same on a poster.
+      // Group candidates for per-group seeded picks in useMemo.
       resolved.sort((a, b) => b.count - a.count)
-      const seenGroups = new Set<string>()
-      const pool = resolved.filter((item) => {
+      return resolved.map((item) => {
         const group =
           item.species.kingdom === 'Animalia'
             ? (item.species.class ?? 'unknown')
             : (item.species.kingdom ?? 'unknown')
-        if (seenGroups.has(group)) return false
-        seenGroups.add(group)
-        return true
+        return {
+          speciesKey: item.speciesKey,
+          count: item.count,
+          group,
+          species: item.species,
+          winningCat,
+        }
       })
-
-      return pool.map((item) => ({
-        ...speciesCardBase(item.speciesKey, item.species),
-        highlight: IUCN_LABELS[winningCat] ?? winningCat,
-        popularity: item.count,
-        iucnCategory: winningCat,
-        iucnLabel: IUCN_LABELS[winningCat] ?? winningCat,
-      }))
     },
     enabled: Boolean(selectedPlace),
     staleTime: 1000 * 60 * 30,
@@ -127,12 +130,45 @@ export const useConservationSnapshot = (
         ? Math.round((threatenedCount / totalAssessedSpecies) * 1000) / 10
         : 0
 
+    const groupedThreatened = new Map<string, ThreatenedCandidate[]>()
+    for (const candidate of threatenedSpeciesQuery.data ?? []) {
+      const bucket = groupedThreatened.get(candidate.group)
+      if (bucket) {
+        bucket.push(candidate)
+      } else {
+        groupedThreatened.set(candidate.group, [candidate])
+      }
+    }
+
+    const threatenedSpecies = Array.from(groupedThreatened.entries())
+      .map(([group, bucket]) => {
+        bucket.sort((a, b) => b.count - a.count)
+        const top = bucket.slice(0, THREATENED_PICK_FROM_TOP_PER_GROUP)
+        const picked = seededPick(
+          top,
+          `${selectedPlace?.id ?? 'none'}:threatened:${group}:${contentSeed}`,
+        )
+        return {
+          ...speciesCardBase(picked.speciesKey, picked.species),
+          highlight: IUCN_LABELS[picked.winningCat] ?? picked.winningCat,
+          popularity: picked.count,
+          iucnCategory: picked.winningCat,
+          iucnLabel: IUCN_LABELS[picked.winningCat] ?? picked.winningCat,
+        } as ThreatenedSpecies
+      })
+      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+
     return {
       totalAssessedSpecies,
       threatenedCount,
       threatenedPercent,
       categoryBreakdown,
-      threatenedSpecies: threatenedSpeciesQuery.data ?? [],
+      threatenedSpecies,
     }
-  }, [speciesCountsQuery.data, threatenedSpeciesQuery.data])
+  }, [
+    speciesCountsQuery.data,
+    threatenedSpeciesQuery.data,
+    selectedPlace?.id,
+    contentSeed,
+  ])
 }

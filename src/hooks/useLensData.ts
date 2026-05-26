@@ -129,7 +129,7 @@ export const useLensData = (
 
   const { thematicStripCards } = useThematicLensData(selectedPlace, contentSeed)
 
-  const conservationSnapshot = useConservationSnapshot(selectedPlace)
+  const conservationSnapshot = useConservationSnapshot(selectedPlace, contentSeed)
 
   const heroSpeciesKey = topSpeciesData[0]?.id
     ? Number(topSpeciesData[0].id)
