@@ -124,23 +124,27 @@ export const useLiveSignatureSpecies = (
 
       // Resolve metadata for a shallow scored window, then enforce a simple
       // "best-per-class" diversity pass before taking the final top-3 pool.
+      //
+      // We deliberately do NOT swallow `fetchSpecies` errors here: a missing
+      // species record degrades `classKey` to `'unknown'`, which silently
+      // changes the `bestByClass` grouping and produces a different final
+      // pool order between tabs that happened to see different network
+      // outcomes. Propagating the error lets react-query (`retry: 4`)
+      // re-run the whole query, restoring share-link reproducibility.
       const resolved = await Promise.all(
         topScored.map(async (entry): Promise<ResolvedCandidate> => {
-          try {
-            const species = await fetchSpecies({
-              speciesKey: entry.speciesKey,
-              signal,
-            })
-            return { entry, species }
-          } catch {
-            return { entry }
-          }
+          const species = await fetchSpecies({
+            speciesKey: entry.speciesKey,
+            signal,
+          })
+          return { entry, species }
         }),
       )
       if (resolved.length === 0) return []
 
       const byRatioDesc = (a: ResolvedCandidate, b: ResolvedCandidate) =>
-        b.entry.ratio - a.entry.ratio
+        b.entry.ratio - a.entry.ratio ||
+        a.entry.speciesKey - b.entry.speciesKey
 
       const bestByClass = new Map<string, ResolvedCandidate>()
       for (const candidate of resolved) {

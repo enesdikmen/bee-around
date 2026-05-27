@@ -25,16 +25,17 @@ export type LockEntry = {
   x: number
   y: number
   /** `posterSeed` value at the moment of locking. Used to reproduce the
-   *  exact content snapshot when the URL is reopened. */
+   *  exact content snapshot when the URL is reopened. Each lock carries
+   *  its own seed so a poster that has been "regenerate-around-locks"-ed
+   *  multiple times can mix snapshots from different seeds. */
   captureSeed: number
 }
 
-/** Decoded lock list with the shared lock seed. `present=false` means the
- *  URL did not contain a `l=` param at all (apply defaults). `present=true`
- *  with an empty list means the user explicitly cleared all locks. */
+/** Decoded lock list. `present=false` means the URL had no `l=` param
+ *  (apply defaults). `present=true` with an empty list means the user
+ *  explicitly cleared all locks. */
 export type LockListState = {
   present: boolean
-  lockSeed: number | null
   locks: LockEntry[]
 }
 
@@ -54,6 +55,14 @@ export function canonicalizePlace(place: Place): Place {
   const lat = Math.round(place.latitude * SCALE)
   const lon = Math.round(place.longitude * SCALE)
   const r10 = Math.max(1, Math.round(place.radiusKm * RADIUS_SCALE))
+  const quantizedBbox = place.bbox
+    ? {
+        minLat: Math.round(place.bbox.minLat * SCALE) / SCALE,
+        maxLat: Math.round(place.bbox.maxLat * SCALE) / SCALE,
+        minLon: Math.round(place.bbox.minLon * SCALE) / SCALE,
+        maxLon: Math.round(place.bbox.maxLon * SCALE) / SCALE,
+      }
+    : undefined
   const slug = shortName
     .toLowerCase()
     .normalize('NFKD')
@@ -64,8 +73,16 @@ export function canonicalizePlace(place: Place): Place {
   const id = `s-${slug || 'p'}-${lat.toString(36)}-${lon.toString(36)}-${r10.toString(36)}`
   const label =
     shortName || `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`
+
+  // Keep runtime geometry on the same precision grid as `encodeShare`.
+  // This makes the first tab use exactly the same Place geometry that
+  // a reopened tab reconstructs from the URL token.
   return {
     ...place,
+    latitude: lat / SCALE,
+    longitude: lon / SCALE,
+    radiusKm: r10 / RADIUS_SCALE,
+    ...(quantizedBbox ? { bbox: quantizedBbox } : {}),
     id,
     label,
   }
@@ -212,107 +229,82 @@ export function readShareFromLocation(): ShareState | null {
 /**
  * Encode the lock list as a single compact `l=` param.
  *
- * Format: `<lockSeed36>;<slotId>_<x36>_<y36>[_<captureSeed36>],...`
- * - lockSeed36 is always present (base36). When there are no locks it is
- *   the literal `0` and the rest of the string is empty.
+ * Format: `<slotId>_<x36>_<y36>_<captureSeed36>,...`
  * - slot ids only contain `[a-zA-Z0-9-]` so they are URL-safe verbatim.
  * - Field separator `_`, lock separator `,`.
- * - `captureSeed36` is optional for backward compatibility. If omitted,
- *   decoders fall back to the shared seed head (or URL `s=` seed).
+ * - `captureSeed36` is REQUIRED on every entry — each lock fully
+ *   self-describes the seed it was captured at so the URL is a
+ *   round-trip fixed point regardless of how many distinct seeds the
+ *   locks span.
+ * - An empty `l=` value (no entries) means "user has explicitly cleared
+ *   all locks"; absent `l=` param means "apply defaults".
  */
-export function encodeLocks(
-  lockSeed: number | null,
-  locks: LockEntry[],
-): string {
-  // If lockSeed state is briefly null while locks exist (React state race),
-  // derive a stable head seed from the lock entries so we never emit `0;...`.
-  const derivedSeed =
-    locks.find((l) => Number.isFinite(l.captureSeed) && l.captureSeed > 0)?.captureSeed ??
-    null
-  const seed =
-    lockSeed && Number.isFinite(lockSeed)
-      ? Math.max(1, Math.trunc(lockSeed))
-      : derivedSeed
-        ? Math.max(1, Math.trunc(derivedSeed))
-        : 0
-  const head = seed.toString(36)
-  if (locks.length === 0) return `${head};`
-  const parts = locks.map(
-    (l) =>
-      `${l.slotId}_${Math.max(0, Math.trunc(l.x)).toString(36)}_${Math.max(
-        0,
-        Math.trunc(l.y),
-      ).toString(36)}_${Math.max(1, Math.trunc(l.captureSeed || seed || 1)).toString(36)}`,
-  )
-  return `${head};${parts.join(',')}`
+export function encodeLocks(locks: LockEntry[]): string {
+  return locks
+    .filter(
+      (l) =>
+        /^[A-Za-z0-9-]+$/.test(l.slotId) &&
+        Number.isFinite(l.captureSeed) &&
+        l.captureSeed > 0,
+    )
+    .map(
+      (l) =>
+        `${l.slotId}_${Math.max(0, Math.trunc(l.x)).toString(36)}_${Math.max(
+          0,
+          Math.trunc(l.y),
+        ).toString(36)}_${Math.max(1, Math.trunc(l.captureSeed)).toString(36)}`,
+    )
+    .join(',')
 }
 
-function decodeLocks(raw: string, fallbackSeed: number | null): LockListState {
-  const semi = raw.indexOf(';')
-  if (semi < 0) return { present: true, lockSeed: null, locks: [] }
-  const headRaw = raw.slice(0, semi)
-  const tail = raw.slice(semi + 1)
-  const seedNum = Number.parseInt(headRaw, 36)
-  const lockSeed =
-    Number.isFinite(seedNum) && seedNum > 0 ? seedNum : null
-  if (!tail) return { present: true, lockSeed, locks: [] }
+export function decodeLocks(raw: string): LockListState {
+  if (raw === '') return { present: true, locks: [] }
   const locks: LockEntry[] = []
-  for (const part of tail.split(',')) {
+  for (const part of raw.split(',')) {
     const fields = part.split('_')
-    if (!(fields.length === 3 || fields.length === 4)) continue
+    if (fields.length !== 4) continue
     const slotId = fields[0]
     if (!/^[A-Za-z0-9-]+$/.test(slotId)) continue
     const x = Number.parseInt(fields[1], 36)
     const y = Number.parseInt(fields[2], 36)
-    if (!Number.isFinite(x) || !Number.isFinite(y)) continue
-    const inlineSeed =
-      fields.length === 4 ? Number.parseInt(fields[3], 36) : Number.NaN
-    const captureSeed =
-      Number.isFinite(inlineSeed) && inlineSeed > 0
-        ? inlineSeed
-        : lockSeed ?? fallbackSeed
-    if (!captureSeed) continue
+    const captureSeed = Number.parseInt(fields[3], 36)
+    if (
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      !Number.isFinite(captureSeed) ||
+      captureSeed <= 0
+    ) {
+      continue
+    }
     locks.push({ slotId, x, y, captureSeed })
   }
-  const effectiveLockSeed =
-    lockSeed ??
-    (locks.length > 0
-      ? locks.every((l) => l.captureSeed === locks[0].captureSeed)
-        ? locks[0].captureSeed
-        : fallbackSeed
-      : null)
-  return { present: true, lockSeed: effectiveLockSeed ?? null, locks }
+  return { present: true, locks }
 }
 
 /** Read `l=` from the current URL. */
 export function readLocksFromLocation(): LockListState {
-  if (typeof window === 'undefined') return { present: false, lockSeed: null, locks: [] }
+  if (typeof window === 'undefined') return { present: false, locks: [] }
   const url = new URL(window.location.href)
   const raw = url.searchParams.get('l')
-  if (raw === null) return { present: false, lockSeed: null, locks: [] }
-  const sToken = url.searchParams.get('s')
-  const fallbackSeed = sToken ? decodeShare(sToken)?.seed ?? null : null
-  return decodeLocks(raw, fallbackSeed)
+  if (raw === null) return { present: false, locks: [] }
+  return decodeLocks(raw)
 }
 
 /**
  * Update the `?s=...` and `?l=...` params in the address bar without
- * pushing history. Pass `lockState=null` to omit `l=` entirely (caller
- * has no opinion / before defaults applied). Pass a state object with an
- * empty list to record "explicitly no locks".
+ * pushing history. Pass `lockState=null`/`undefined` to omit `l=`
+ * entirely (caller has no opinion / before defaults applied). Pass a
+ * state object with an empty list to record "explicitly no locks".
  */
 export function syncShareToLocation(
   place: Place,
   seed: number,
-  lockState?: { lockSeed: number | null; locks: LockEntry[] } | null,
+  lockState?: { locks: LockEntry[] } | null,
 ): void {
   if (typeof window === 'undefined') return
   const url = new URL(window.location.href)
   const token = encodeShare(place, seed)
-  // lockState === undefined/null → caller has no opinion, leave `l=` as-is.
-  // lockState provided → write `l=` (possibly empty list, indicating
-  // "user has explicitly cleared the defaults").
-  const lToken = lockState ? encodeLocks(lockState.lockSeed, lockState.locks) : null
+  const lToken = lockState ? encodeLocks(lockState.locks) : null
 
   const curSToken = url.searchParams.get('s')
   const curLToken = url.searchParams.get('l')
