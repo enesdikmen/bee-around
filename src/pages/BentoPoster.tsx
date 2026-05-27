@@ -63,18 +63,9 @@ function BentoPoster({
   // `src/api/speciesImage.ts`.
   const effectiveSources = ALL_IMAGE_SOURCES
 
-  // ── Per-card lock feature ─────────────────────────────────────────────
-  // A locked tile freezes its content (which species/image it shows) AND
-  // its grid position across Regenerate. Lock/unlock itself is treated as
-  // metadata-only: the visible card content should not jump at click time.
-  // A just-unlocked card is held as a temporary visual override until the
-  // next Regenerate, then it rejoins normal seeded variation.
-  //
-  // Every Lock carries its own `captureSeed` — the `posterSeed` value at
-  // the moment it was created. URL share/restore round-trips each lock
-  // entry's captureSeed independently, so a poster that has been
-  // regenerate-around-locks'd across multiple seeds can mix snapshots
-  // from different seeds without losing any of them.
+  // Per-card locks freeze tile content + position across Regenerate.
+  // Unlock is visual-only until next Regenerate (via unlockOverrides).
+  // Each lock stores its own captureSeed for mixed-seed restore.
   type Lock = { tile: Tile; x: number; y: number; captureSeed: number }
   const [locks, setLocks] = useState<Map<string, Lock>>(new Map())
   // Recently unlocked tiles stay visually frozen until the next Regenerate.
@@ -85,20 +76,14 @@ function BentoPoster({
   const [userManagedLocks, setUserManagedLocks] = useState<boolean>(
     initialLocks?.present ?? false,
   )
-  // Pending lock entries from the URL that still need to be matched
-  // against snapshot data once it has loaded. Cleared after every entry
-  // has been processed exactly once (resolved or warned + dropped).
-  // State (not ref) so render & effects can gate on it, and the
-  // URL-sync effect can avoid clobbering the address bar while the
-  // restore is in flight.
+  // Pending URL lock entries waiting to be resolved against loaded tiles.
+  // Kept in state so effects/UI can gate while restore is in flight.
   const [pendingLocks, setPendingLocks] = useState<LockEntry[] | null>(
     initialLocks?.present && initialLocks.locks.length > 0
       ? initialLocks.locks
       : null,
   )
-  // While restoring, the lockData hook is parked at this seed. We
-  // process pendingLocks one captureSeed at a time so a single
-  // useLensData call is enough — sequential, deterministic, terminating.
+  // Active seed for lock restore. We process one captureSeed at a time.
   const [restoreSeed, setRestoreSeed] = useState<number | null>(
     initialLocks?.present && initialLocks.locks.length > 0
       ? initialLocks.locks[0].captureSeed
@@ -253,27 +238,14 @@ function BentoPoster({
     [placeName, latitude, longitude, displayData, posterSeed, selectedPlace],
   )
 
-  // Default locks: title pinned top-left, sources pinned bottom-right.
-  // These always re-apply on initial load (per place) for any slot the
-  // URL did not explicitly include in `l=`. This guarantees that two
-  // tabs opening the same URL agree on title/sources placement, even if
-  // the original tab had unlocked them locally (the unlocked state is
-  // intentionally not persisted through URL sharing).
-  //
-  // Runs only after URL-restored locks have been resolved, so we never
-  // double-apply a default position that the URL is about to override.
+  // Default locks: title top-left, sources bottom-right.
+  // Applied only when URL did not provide those slots.
   const [didInitDefaultLocks, setDidInitDefaultLocks] = useState(false)
   useLayoutEffect(() => {
     if (didInitDefaultLocks) return
     if (pendingLocks !== null) return
     if (baseTiles.length === 0) return
-    // Guard against capturing stale snapshot data on place change. When
-    // the user switches places, `displayData` may still be the previous
-    // place's committed snapshot until the new place's data is ready.
-    // `baseTiles` is built from `displayData`, so committing default
-    // locks now would freeze the OLD place's title/sources content under
-    // the NEW place's name. Wait until the snapshot for the current
-    // place is committed.
+    // Prevent default-lock capture from a stale place snapshot.
     if (committedSnapshot?.key !== snapshotKey) return
     const title = baseTiles.find((t) => t.slotId === 'title')
     const sources = baseTiles.find((t) => t.slotId === 'sources')
@@ -281,8 +253,7 @@ function BentoPoster({
       setDidInitDefaultLocks(true)
       return
     }
-    // Default-locked title/sources are content-stable across seeds, so
-    // they're always anchored at the current `posterSeed`.
+    // Default locks anchor at the current seed.
     const captureSeed = posterSeed
     let addedAny = false
     setLocks((prev) => {
@@ -305,13 +276,8 @@ function BentoPoster({
     setDidInitDefaultLocks(true)
   }, [pendingLocks, baseTiles, didInitDefaultLocks, posterSeed, GRID_W, committedSnapshot?.key, snapshotKey])
 
-  // URL-restored locks: process pending entries one captureSeed at a
-  // time. `lockData` is parked at `restoreSeed`; once it's ready we
-  // build the tile list at that seed and resolve every lock whose
-  // captureSeed matches. Entries whose slot doesn't appear at their
-  // captureSeed are dropped (with a dev warning) so the loop always
-  // terminates — never silently truncates the URL, because the missing
-  // slots simply aren't reproducible in this environment.
+  // Restore URL locks one captureSeed at a time.
+  // Missing slots at a seed are dropped with a dev warning.
   useEffect(() => {
     if (!pendingLocks || restoreSeed === null) return
     if (!lockData.isReady) return

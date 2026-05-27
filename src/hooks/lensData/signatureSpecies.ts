@@ -122,15 +122,10 @@ export const useLiveSignatureSpecies = (
         species?: Awaited<ReturnType<typeof fetchSpecies>>
       }
 
-      // Resolve metadata for a shallow scored window, then enforce a simple
-      // "best-per-class" diversity pass before taking the final top-3 pool.
-      //
-      // We deliberately do NOT swallow `fetchSpecies` errors here: a missing
-      // species record degrades `classKey` to `'unknown'`, which silently
-      // changes the `bestByClass` grouping and produces a different final
-      // pool order between tabs that happened to see different network
-      // outcomes. Propagating the error lets react-query (`retry: 4`)
-      // re-run the whole query, restoring share-link reproducibility.
+      // Resolve metadata for the scored window, then pick a class-diverse
+      // top-3 pool. Do not swallow fetchSpecies failures: degraded class
+      // labels can change pool composition between tabs. Let react-query
+      // retries rerun the query for reproducible share links.
       const resolved = await Promise.all(
         topScored.map(async (entry): Promise<ResolvedCandidate> => {
           const species = await fetchSpecies({
