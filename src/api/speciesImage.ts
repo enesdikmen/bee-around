@@ -203,17 +203,21 @@ const tryGbif = async (
 
 // ── Resolver ──────────────────────────────────────────────────────
 //
-// Design: cache one Promise per (speciesKey, source) pair, forever.
+// Design: cache one Promise per (speciesKey, source) pair.
 // • The promise itself dedupes concurrent callers.
-// • The resolved value (image or null) is the cached outcome — so a source
-//   that returned no image is never retried, and a successful hit is reused
-//   instantly when sources are toggled or reordered.
+// • Successful hits (non-null) are cached forever and reused instantly
+//   when sources are toggled or reordered.
+// • `null` outcomes are evicted after resolution so a transient network
+//   failure (rate limit, offline blip) doesn't permanently poison a
+//   species' image — the next call retries from scratch. This is what
+//   lets locked cards on a freshly opened share URL recover their image
+//   instead of showing the placeholder forever.
 // • We deliberately do NOT accept an external AbortSignal. React Query
 //   cancels the parent query on every key change (e.g. toggling a source);
 //   if we propagated that, in-flight fetches would be aborted mid-walk and
 //   the next render would have nothing cached. By owning the lifetime of
 //   each fetch we guarantee every (species, source) pair resolves exactly
-//   once and the result sticks around.
+//   once per attempt and successful results stick around.
 
 const FETCHERS: Record<
   ImageSource,
@@ -247,6 +251,18 @@ const fetchOne = (
   const promise = FETCHERS[source]({ speciesKey, scientificName, signal: ctl.signal })
     .catch(() => null)
     .finally(() => clearTimeout(timer))
+    .then((result) => {
+      // Don't poison the cache with transient nulls — evict so the next
+      // caller can retry. Successful hits stay cached for the session.
+      if (!result?.url) {
+        const map = cache.get(speciesKey)
+        if (map?.get(source) === promise) {
+          map.delete(source)
+          if (map.size === 0) cache.delete(speciesKey)
+        }
+      }
+      return result
+    })
 
   bySource.set(source, promise)
   return promise

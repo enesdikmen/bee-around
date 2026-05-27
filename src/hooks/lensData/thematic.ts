@@ -66,7 +66,7 @@ export const useThematicLensData = (
         })),
       )
       .filter((c) => Number.isFinite(c.speciesKey))
-      .sort((a, b) => b.count - a.count)
+      .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
 
     const seen = new Set<number>()
     const picks: typeof all = []
@@ -95,6 +95,7 @@ export const useThematicLensData = (
       const picks = counts
         .map((c) => ({ speciesKey: Number(c.name), count: c.count }))
         .filter((c) => Number.isFinite(c.speciesKey))
+        .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
         .slice(0, IN_SEASON_RULE.stripSize)
         .map((c) => ({ ...c, highlight: IN_SEASON_RULE.highlight }))
       return resolveSpeciesCards(picks, signal)
@@ -139,6 +140,7 @@ export const useThematicLensData = (
       const candidates = (response.facets?.[0]?.counts ?? [])
         .map((c) => ({ speciesKey: Number(c.name), count: c.count }))
         .filter((c) => Number.isFinite(c.speciesKey))
+        .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
 
       const checkedCandidates = candidates.slice(0, BRAND_NEW_RULE.maxYearChecks)
       const validated: Array<{ speciesKey: number; count: number; earliestYear: number }> = []
@@ -170,7 +172,12 @@ export const useThematicLensData = (
       }
 
       const picks = validated
-        .sort((a, b) => b.earliestYear - a.earliestYear || b.count - a.count)
+        .sort(
+          (a, b) =>
+            b.earliestYear - a.earliestYear ||
+            b.count - a.count ||
+            a.speciesKey - b.speciesKey,
+        )
         .slice(0, BRAND_NEW_RULE.stripSize)
         .map((item) => ({
           speciesKey: item.speciesKey,

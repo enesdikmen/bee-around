@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { resolveSpeciesImage, type ImageSource } from '../../api/speciesImage'
 import type {
@@ -69,6 +69,13 @@ export const useLensImageOverlay = (
         { url: string; squareUrl?: string; source: ImageSource }
       >()
       if (imageSources.length === 0) return map
+      // Single fast pass. We deliberately do NOT block here on retries —
+      // doing so would freeze Regenerate behind the slowest source. Any
+      // species still missing after this pass is picked up by the
+      // background retry effect below, which calls `refetch` after a
+      // backoff. The fetcher cache in `speciesImage.ts` evicts null
+      // outcomes, so each refetch re-attempts the source chain from
+      // scratch and successful hits accumulate across passes.
       await Promise.all(
         speciesForImaging.map(async ({ speciesKey, canonicalName }) => {
           const img = await resolveSpeciesImage({
@@ -93,6 +100,47 @@ export const useLensImageOverlay = (
   })
 
   const imageMap = imageMapQuery.data
+
+  // Background retry for share-link fidelity. When the first pass leaves
+  // species without images (typical for a freshly opened share URL where
+  // Wikidata/iNat momentarily rate-limit), we refetch with exponential
+  // backoff up to MAX_RETRIES. Successful hits cached in
+  // `speciesImage.ts` are reused instantly, so each retry only re-attempts
+  // genuinely missing species. The UI keeps rendering with whatever
+  // images we have so Regenerate stays snappy.
+  const retryCountRef = useRef(0)
+  const retryKeyRef = useRef<string>('')
+  const speciesKeyJoined = useMemo(
+    () => speciesForImaging.map((s) => s.speciesKey).join(','),
+    [speciesForImaging],
+  )
+  const sourcesJoined = useMemo(() => imageSources.join(','), [imageSources])
+
+  useEffect(() => {
+    const key = `${speciesKeyJoined}|${sourcesJoined}`
+    if (retryKeyRef.current !== key) {
+      retryKeyRef.current = key
+      retryCountRef.current = 0
+    }
+  }, [speciesKeyJoined, sourcesJoined])
+
+  useEffect(() => {
+    if (!imageMapQuery.isSuccess) return
+    if (imageSources.length === 0 || speciesForImaging.length === 0) return
+    const MAX_RETRIES = 3
+    const DELAYS_MS = [600, 1500, 3500]
+    if (retryCountRef.current >= MAX_RETRIES) return
+    const missing = speciesForImaging.filter(
+      (s) => !imageMap?.has(s.speciesKey),
+    )
+    if (missing.length === 0) return
+    const delay = DELAYS_MS[retryCountRef.current] ?? 3500
+    const timer = window.setTimeout(() => {
+      retryCountRef.current += 1
+      void imageMapQuery.refetch()
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [imageMapQuery, imageMap, speciesForImaging, imageSources])
 
   const applyImage = useMemo(() => {
     return <T extends SpeciesCard>(card: T): T => {

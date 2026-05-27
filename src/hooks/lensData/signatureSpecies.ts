@@ -111,7 +111,9 @@ export const useLiveSignatureSpecies = (
         scored.push({ speciesKey, localCount, globalCount, ratio })
       }
 
-      scored.sort((a, b) => b.ratio - a.ratio)
+      scored.sort(
+        (a, b) => b.ratio - a.ratio || a.speciesKey - b.speciesKey,
+      )
       if (scored.length === 0) return []
 
       const topScored = scored.slice(0, METADATA_CANDIDATE_POOL)
@@ -197,6 +199,12 @@ export const useLiveSignatureSpecies = (
     enabled: Boolean(selectedPlace),
     // Global baseline is static; place facet is moderately expensive.
     staleTime: 1000 * 60 * 30,
+    // Share-link fidelity: if this query fails on a freshly opened share
+    // URL, the signature card slot collapses and the layout backfills it
+    // with a thematic card. Retry aggressively so a transient blip
+    // doesn't break reproducibility between tabs.
+    retry: 4,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   })
 
   return {

@@ -212,17 +212,29 @@ export function readShareFromLocation(): ShareState | null {
 /**
  * Encode the lock list as a single compact `l=` param.
  *
- * Format: `<lockSeed36>;<slotId>_<x36>_<y36>,<slotId>_<x36>_<y36>,...`
+ * Format: `<lockSeed36>;<slotId>_<x36>_<y36>[_<captureSeed36>],...`
  * - lockSeed36 is always present (base36). When there are no locks it is
  *   the literal `0` and the rest of the string is empty.
  * - slot ids only contain `[a-zA-Z0-9-]` so they are URL-safe verbatim.
  * - Field separator `_`, lock separator `,`.
+ * - `captureSeed36` is optional for backward compatibility. If omitted,
+ *   decoders fall back to the shared seed head (or URL `s=` seed).
  */
 export function encodeLocks(
   lockSeed: number | null,
   locks: LockEntry[],
 ): string {
-  const seed = lockSeed && Number.isFinite(lockSeed) ? Math.max(1, Math.trunc(lockSeed)) : 0
+  // If lockSeed state is briefly null while locks exist (React state race),
+  // derive a stable head seed from the lock entries so we never emit `0;...`.
+  const derivedSeed =
+    locks.find((l) => Number.isFinite(l.captureSeed) && l.captureSeed > 0)?.captureSeed ??
+    null
+  const seed =
+    lockSeed && Number.isFinite(lockSeed)
+      ? Math.max(1, Math.trunc(lockSeed))
+      : derivedSeed
+        ? Math.max(1, Math.trunc(derivedSeed))
+        : 0
   const head = seed.toString(36)
   if (locks.length === 0) return `${head};`
   const parts = locks.map(
@@ -230,12 +242,12 @@ export function encodeLocks(
       `${l.slotId}_${Math.max(0, Math.trunc(l.x)).toString(36)}_${Math.max(
         0,
         Math.trunc(l.y),
-      ).toString(36)}`,
+      ).toString(36)}_${Math.max(1, Math.trunc(l.captureSeed || seed || 1)).toString(36)}`,
   )
   return `${head};${parts.join(',')}`
 }
 
-function decodeLocks(raw: string): LockListState {
+function decodeLocks(raw: string, fallbackSeed: number | null): LockListState {
   const semi = raw.indexOf(';')
   if (semi < 0) return { present: true, lockSeed: null, locks: [] }
   const headRaw = raw.slice(0, semi)
@@ -247,24 +259,40 @@ function decodeLocks(raw: string): LockListState {
   const locks: LockEntry[] = []
   for (const part of tail.split(',')) {
     const fields = part.split('_')
-    if (fields.length !== 3) continue
+    if (!(fields.length === 3 || fields.length === 4)) continue
     const slotId = fields[0]
     if (!/^[A-Za-z0-9-]+$/.test(slotId)) continue
     const x = Number.parseInt(fields[1], 36)
     const y = Number.parseInt(fields[2], 36)
     if (!Number.isFinite(x) || !Number.isFinite(y)) continue
-    if (lockSeed === null) continue
-    locks.push({ slotId, x, y, captureSeed: lockSeed })
+    const inlineSeed =
+      fields.length === 4 ? Number.parseInt(fields[3], 36) : Number.NaN
+    const captureSeed =
+      Number.isFinite(inlineSeed) && inlineSeed > 0
+        ? inlineSeed
+        : lockSeed ?? fallbackSeed
+    if (!captureSeed) continue
+    locks.push({ slotId, x, y, captureSeed })
   }
-  return { present: true, lockSeed, locks }
+  const effectiveLockSeed =
+    lockSeed ??
+    (locks.length > 0
+      ? locks.every((l) => l.captureSeed === locks[0].captureSeed)
+        ? locks[0].captureSeed
+        : fallbackSeed
+      : null)
+  return { present: true, lockSeed: effectiveLockSeed ?? null, locks }
 }
 
 /** Read `l=` from the current URL. */
 export function readLocksFromLocation(): LockListState {
   if (typeof window === 'undefined') return { present: false, lockSeed: null, locks: [] }
-  const raw = new URL(window.location.href).searchParams.get('l')
+  const url = new URL(window.location.href)
+  const raw = url.searchParams.get('l')
   if (raw === null) return { present: false, lockSeed: null, locks: [] }
-  return decodeLocks(raw)
+  const sToken = url.searchParams.get('s')
+  const fallbackSeed = sToken ? decodeShare(sToken)?.seed ?? null : null
+  return decodeLocks(raw, fallbackSeed)
 }
 
 /**

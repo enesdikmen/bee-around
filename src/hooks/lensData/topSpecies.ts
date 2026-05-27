@@ -71,6 +71,7 @@ export const useTopSpeciesData = (
           const pool = (response.facets?.[0]?.counts ?? [])
             .map((c) => ({ speciesKey: Number(c.name), count: c.count }))
             .filter((c) => Number.isFinite(c.speciesKey))
+            .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
             .slice(0, pick)
 
           if (pool.length > 0) return { slot, pool }
@@ -164,6 +165,12 @@ export const useTopSpeciesData = (
     enabled: Boolean(selectedPlace),
     staleTime: Infinity,
     gcTime: Infinity,
+    // Share-link fidelity: hero/mini slots are deterministic only when
+    // this pool resolves successfully. Transient GBIF blips on a fresh
+    // tab would otherwise fall back to `fallbackTopSpecies`, changing
+    // every card on the poster.
+    retry: 4,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   })
 
   const topSpeciesData = useMemo(() => {

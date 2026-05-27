@@ -278,12 +278,19 @@ function BentoPoster({
   }, [pendingLocks, baseTiles, didInitDefaultLocks, posterSeed, lockSeed, GRID_W])
 
   // URL-restored locks: once `lockTiles` is built at the captured seed,
-  // resolve each pending lock entry against it and populate the lock map.
+  // resolve pending lock entries for that seed and continue until all
+  // capture seeds in the URL are restored.
   useEffect(() => {
     if (!pendingLocks) return
     if (lockTiles.length === 0) return
+    const activeSeed = lockSeed ?? posterSeed
     const resolved = new Map<string, Lock>()
+    const unresolved: LockEntry[] = []
     for (const entry of pendingLocks) {
+      if (entry.captureSeed !== activeSeed) {
+        unresolved.push(entry)
+        continue
+      }
       const tile = lockTiles.find((t) => t.slotId === entry.slotId)
       if (!tile) continue
       resolved.set(entry.slotId, {
@@ -293,9 +300,27 @@ function BentoPoster({
         captureSeed: entry.captureSeed,
       })
     }
-    setLocks(resolved)
-    setPendingLocks(null)
-  }, [pendingLocks, lockTiles])
+    if (resolved.size > 0) {
+      setLocks((prev) => {
+        const next = new Map(prev)
+        for (const [slotId, lock] of resolved) next.set(slotId, lock)
+        return next
+      })
+    }
+    if (unresolved.length === 0) {
+      setPendingLocks(null)
+      return
+    }
+    const nextSeed = unresolved[0].captureSeed
+    setPendingLocks(unresolved)
+    // If remaining entries require this same seed but still couldn't be
+    // resolved, stop retrying to avoid an infinite loop.
+    if (nextSeed === activeSeed) {
+      setPendingLocks(null)
+      return
+    }
+    setLockSeed(nextSeed)
+  }, [pendingLocks, lockTiles, lockSeed, posterSeed])
 
   const tiles = useMemo(() => {
     // Apply locks: replace locked slots with their frozen snapshot, drop

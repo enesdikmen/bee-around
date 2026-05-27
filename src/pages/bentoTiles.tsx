@@ -749,16 +749,21 @@ export const CARD_DEFS: CardDef[] = [
     className:
       'bento-card bento-card--mini bento-card--signature accent-forest',
     build: ({ data, placeName, latitude, longitude, contentSeed }) => {
-      // Deterministic order over the *unfiltered* pool, then take the first
-      // candidate that actually has an image. Keeps the pick stable across
-      // reloads even when image-fetch success varies between requests.
+      // Pick deterministically from the seeded shuffle. We intentionally
+      // do NOT filter on `imageUrl` here — image resolution is
+      // best-effort and can vary between tab loads (network blips, source
+      // rate limits). Filtering by `imageUrl` would let two tabs with the
+      // same share URL pick *different* species purely because of image
+      // fetch luck, breaking share-link reproducibility. If the chosen
+      // species' image fails, `renderSpeciesImage` shows a placeholder;
+      // the species identity stays stable across tabs.
       const fullPool = data.signatureSpeciesData
       if (fullPool.length === 0) return []
       const ordered = seededShuffle(
         fullPool,
         `signature:${placeName}:${latitude ?? ''}:${longitude ?? ''}:${contentSeed}`,
       )
-      const sp = ordered.find((s) => s.imageUrl)
+      const sp = ordered[0]
       if (!sp) return []
       const r = sp.overRepresentationRatio
       const ratioLabel =

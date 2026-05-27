@@ -77,6 +77,7 @@ export const useConservationSnapshot = (
         raw = (response.facets?.[0]?.counts ?? [])
           .map((c) => ({ speciesKey: Number(c.name), count: c.count }))
           .filter((c) => Number.isFinite(c.speciesKey))
+          .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
         if (raw.length > 0) {
           winningCat = cat
           break
@@ -93,7 +94,7 @@ export const useConservationSnapshot = (
       )
 
       // Group candidates for per-group seeded picks in useMemo.
-      resolved.sort((a, b) => b.count - a.count)
+      resolved.sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
       return resolved.map((item) => {
         const group =
           item.species.kingdom === 'Animalia'
@@ -147,7 +148,7 @@ export const useConservationSnapshot = (
 
     const threatenedSpecies = Array.from(groupedThreatened.entries())
       .map(([group, bucket]) => {
-        bucket.sort((a, b) => b.count - a.count)
+        bucket.sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
         const top = bucket.slice(0, THREATENED_PICK_FROM_TOP_PER_GROUP)
         const picked = seededPick(
           top,
