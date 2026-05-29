@@ -38,19 +38,38 @@ interface Props {
   initialSeed?: number
   /** Optional lock list restored from URL (`l=` param). */
   initialLocks?: LockListState
+  /** Optional language restored from URL (`lang=` param). */
+  initialLanguage?: string
 }
+
+const COMMON_NAME_LANGUAGES = [
+  { code: 'en', label: 'EN' },
+  { code: 'fr', label: 'FR' },
+  { code: 'es', label: 'ES' },
+  { code: 'tr', label: 'TR' },
+  { code: 'de', label: 'DE' },
+  { code: 'it', label: 'IT' },
+  { code: 'pt', label: 'PT' },
+] as const
 
 function BentoPoster({
   selectedPlace,
   onPlaceChange,
   initialSeed,
   initialLocks,
+  initialLanguage,
 }: Props) {
   // Single seed for poster-level variation. Layout and data already consume it;
   // future style themes should derive from this same seed as well.
   const [posterSeed, setPosterSeed] = useState(
     initialSeed && Number.isFinite(initialSeed) ? initialSeed : 1,
   )
+  const [commonNameLanguage, setCommonNameLanguage] = useState(() => {
+    const normalized = (initialLanguage ?? 'en').trim().toLowerCase()
+    return COMMON_NAME_LANGUAGES.some((option) => option.code === normalized)
+      ? normalized
+      : 'en'
+  })
   const [shareCopied, setShareCopied] = useState(false)
   const GRID_W = POSTER_GRID_W
 
@@ -96,11 +115,13 @@ function BentoPoster({
   const data = useLensData(selectedPlace, {
     imageSources: effectiveSources,
     contentSeed: posterSeed,
+    commonNameLanguage,
   })
   const isLockRestoreActive = pendingLocks !== null && restoreSeed !== null
   const lockData = useLensData(selectedPlace, {
     imageSources: effectiveSources,
     contentSeed: restoreSeed ?? posterSeed,
+    commonNameLanguage,
     enabled: isLockRestoreActive,
   })
 
@@ -117,6 +138,7 @@ function BentoPoster({
     data: LensData
   } | null>(null)
   const wasDataReadyRef = useRef(false)
+  const previousLanguageRef = useRef(commonNameLanguage)
 
   useEffect(() => {
     const becameReady = data.isReady && !wasDataReadyRef.current
@@ -126,6 +148,27 @@ function BentoPoster({
     }
     wasDataReadyRef.current = data.isReady
   }, [data, snapshotKey, committedSnapshot?.key])
+
+  // When language changes, re-resolve currently locked slots from their
+  // original captureSeed so names localize without altering species picks
+  // or tile positions.
+  useEffect(() => {
+    if (previousLanguageRef.current === commonNameLanguage) return
+    previousLanguageRef.current = commonNameLanguage
+    if (pendingLocks !== null) return
+    if (locks.size === 0) return
+
+    const refreshLocks = Array.from(locks.entries()).map(([slotId, l]) => ({
+      slotId,
+      x: l.x,
+      y: l.y,
+      captureSeed: l.captureSeed,
+    }))
+    if (refreshLocks.length === 0) return
+
+    setPendingLocks(refreshLocks)
+    setRestoreSeed(refreshLocks[0].captureSeed)
+  }, [commonNameLanguage, locks, pendingLocks])
 
   const displayData = data.isReady ? data : committedSnapshot?.data ?? null
   // Only show the loading overlay while waiting on the *first* ready
@@ -175,7 +218,7 @@ function BentoPoster({
     if (!selectedPlace) return
     if (pendingLocks !== null) return
     const lockState = userManagedLocks ? { locks: currentLockEntries } : null
-    syncShareToLocation(selectedPlace, posterSeed, lockState)
+    syncShareToLocation(selectedPlace, posterSeed, lockState, commonNameLanguage)
 
     // Dev assertion: paste → decode → state → encode is a fixed point.
     if (import.meta.env.DEV && lockState) {
@@ -183,14 +226,20 @@ function BentoPoster({
       const decoded = decodeLocks(encoded)
       const reencoded = encodeLocks(decoded.locks)
       if (encoded !== reencoded) {
-        // eslint-disable-next-line no-console
         console.warn(
           '[locks] encode/decode round-trip mismatch:',
           { encoded, reencoded, decoded },
         )
       }
     }
-  }, [selectedPlace, posterSeed, currentLockEntries, userManagedLocks, pendingLocks])
+  }, [
+    selectedPlace,
+    posterSeed,
+    currentLockEntries,
+    userManagedLocks,
+    pendingLocks,
+    commonNameLanguage,
+  ])
 
   const handleShare = async () => {
     if (!selectedPlace) return
@@ -225,6 +274,7 @@ function BentoPoster({
     if (typeof window !== 'undefined' && selectedPlace) {
       const url = new URL(window.location.href)
       url.searchParams.set('s', encodeShare(selectedPlace, seed))
+      url.searchParams.set('lang', commonNameLanguage)
       shareUrl = url.toString()
     }
     return buildBentoTiles({
@@ -291,6 +341,7 @@ function BentoPoster({
     if (typeof window !== 'undefined' && selectedPlace) {
       const url = new URL(window.location.href)
       url.searchParams.set('s', encodeShare(selectedPlace, restoreSeed))
+      url.searchParams.set('lang', commonNameLanguage)
       restoreShareUrl = url.toString()
     }
     const restoredTiles = buildBentoTiles({
@@ -311,7 +362,6 @@ function BentoPoster({
       const tile = restoredTiles.find((t) => t.slotId === entry.slotId)
       if (!tile) {
         if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
           console.warn(
             `[locks] could not resolve slot "${entry.slotId}" at captureSeed=${entry.captureSeed}; dropping entry`,
           )
@@ -326,13 +376,16 @@ function BentoPoster({
         captureSeed: entry.captureSeed,
       })
     }
-    if (resolved.size > 0) {
-      setLocks((prev) => {
-        const next = new Map(prev)
-        for (const [slotId, lock] of resolved) next.set(slotId, lock)
-        return next
-      })
-    }
+    setLocks((prev) => {
+      const next = new Map(prev)
+      // Replace every slot captured at this seed with freshly resolved
+      // tiles (or drop when no longer resolvable).
+      for (const entry of pendingLocks) {
+        if (entry.captureSeed === restoreSeed) next.delete(entry.slotId)
+      }
+      for (const [slotId, lock] of resolved) next.set(slotId, lock)
+      return next
+    })
     if (remaining.length === 0) {
       setPendingLocks(null)
       setRestoreSeed(null)
@@ -514,6 +567,21 @@ function BentoPoster({
     <div className="bento-shell">
       <div className="bento-toolbar">
         <CitySearch selected={selectedPlace} onSelect={onPlaceChange} />
+        <label className="bento-toolbar__field">
+          <span className="bento-toolbar__field-label">Language</span>
+          <select
+            className="bento-toolbar__select"
+            value={commonNameLanguage}
+            onChange={(event) => setCommonNameLanguage(event.target.value)}
+            aria-label="Common names language"
+          >
+            {COMMON_NAME_LANGUAGES.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           className="bento-toolbar__btn bento-toolbar__btn--primary"

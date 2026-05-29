@@ -37,9 +37,10 @@ export type TopSpeciesResult = {
 export const useTopSpeciesData = (
   selectedPlace: Place | undefined,
   contentSeed: number,
+  commonNameLanguage: string,
 ): TopSpeciesResult => {
   const topSpeciesPoolQuery = useQuery({
-    queryKey: ['topSpeciesPool', selectedPlace?.id],
+    queryKey: ['topSpeciesPool', selectedPlace?.id, commonNameLanguage],
     queryFn: async ({ signal }): Promise<TopSpeciesPoolData> => {
       if (!selectedPlace) return { slots: [], extraMiniSlots: [] }
 
@@ -98,7 +99,11 @@ export const useTopSpeciesData = (
 
       const speciesInfo = await Promise.all(
         uniqueSpeciesKeys.map(async (speciesKey) => {
-          const species = await fetchSpecies({ speciesKey, signal })
+          const species = await fetchSpecies({
+            speciesKey,
+            signal,
+            language: commonNameLanguage,
+          })
 
           return {
             speciesKey,

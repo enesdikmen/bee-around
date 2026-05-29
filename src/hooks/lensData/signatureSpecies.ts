@@ -69,9 +69,10 @@ export type SignatureSpeciesResult = {
 
 export const useLiveSignatureSpecies = (
   selectedPlace?: Place,
+  commonNameLanguage = 'en',
 ): SignatureSpeciesResult => {
   const query = useQuery({
-    queryKey: ['liveSignatureSpecies', selectedPlace?.id],
+    queryKey: ['liveSignatureSpecies', selectedPlace?.id, commonNameLanguage],
     queryFn: async ({ signal }): Promise<SignatureSpeciesCard[]> => {
       if (!selectedPlace || GLOBAL_TOTAL <= 0) return []
 
@@ -131,6 +132,7 @@ export const useLiveSignatureSpecies = (
           const species = await fetchSpecies({
             speciesKey: entry.speciesKey,
             signal,
+            language: commonNameLanguage,
           })
           return { entry, species }
         }),

@@ -3,6 +3,7 @@ import BentoPoster from './pages/BentoPoster'
 import { places } from './data/lensFallbacks'
 import {
   canonicalizePlace,
+  readLanguageFromLocation,
   readLocksFromLocation,
   readShareFromLocation,
 } from './lib/shareToken'
@@ -10,6 +11,7 @@ import type { Place } from './types/lens'
 
 const initialShare = readShareFromLocation()
 const initialLocks = readLocksFromLocation()
+const initialLanguage = readLanguageFromLocation()
 
 function App() {
   const [selectedPlace, setSelectedPlace] = useState<Place>(
@@ -28,6 +30,7 @@ function App() {
         onPlaceChange={handlePlaceChange}
         initialSeed={initialShare?.seed}
         initialLocks={initialLocks}
+        initialLanguage={initialLanguage ?? undefined}
       />
     </div>
   )

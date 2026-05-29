@@ -50,6 +50,8 @@ export type LensData = {
 export type UseLensDataOptions = {
   imageSources?: ImageSource[]
   contentSeed?: number
+  /** Preferred language code for species common names (BCP-47). */
+  commonNameLanguage?: string
   /** Disable all network work for this hook instance. */
   enabled?: boolean
 }

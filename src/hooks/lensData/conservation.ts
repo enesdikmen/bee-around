@@ -30,6 +30,7 @@ type ThreatenedCandidate = {
 export const useConservationSnapshot = (
   selectedPlace: Place | undefined,
   contentSeed: number,
+  commonNameLanguage: string,
 ): ConservationLensResult => {
   const speciesCountsQuery = useQuery({
     queryKey: ['iucnSpeciesCounts', selectedPlace?.id],
@@ -59,7 +60,7 @@ export const useConservationSnapshot = (
   })
 
   const threatenedSpeciesQuery = useQuery({
-    queryKey: ['threatenedSpecies', selectedPlace?.id],
+    queryKey: ['threatenedSpecies', selectedPlace?.id, commonNameLanguage],
     queryFn: async ({ signal }): Promise<ThreatenedCandidate[]> => {
       if (!selectedPlace) return []
 
@@ -88,7 +89,11 @@ export const useConservationSnapshot = (
       // Resolve species info so we can class-cap.
       const resolved = await Promise.all(
         raw.map(async (item) => {
-          const species = await fetchSpecies({ speciesKey: item.speciesKey, signal })
+          const species = await fetchSpecies({
+            speciesKey: item.speciesKey,
+            signal,
+            language: commonNameLanguage,
+          })
           return { ...item, species }
         }),
       )

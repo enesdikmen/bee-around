@@ -42,6 +42,7 @@ export const useLensData = (
   const imageSources = options.imageSources ?? ALL_IMAGE_SOURCES
   const activeImageSources = enabled ? imageSources : []
   const contentSeed = options.contentSeed ?? 1
+  const commonNameLanguage = options.commonNameLanguage ?? 'en'
 
   const facetsQuery = useQuery({
     queryKey: ['occurrenceFacets', activePlace?.id],
@@ -127,17 +128,18 @@ export const useLensData = (
   const {
     topSpeciesData,
     isReady: isTopSpeciesReady,
-  } = useTopSpeciesData(activePlace, contentSeed)
+  } = useTopSpeciesData(activePlace, contentSeed, commonNameLanguage)
 
   const { thematicStripCards, isReady: isThematicReady } = useThematicLensData(
     activePlace,
     contentSeed,
+    commonNameLanguage,
   )
 
   const {
     snapshot: conservationSnapshot,
     isReady: isConservationReady,
-  } = useConservationSnapshot(activePlace, contentSeed)
+  } = useConservationSnapshot(activePlace, contentSeed, commonNameLanguage)
 
   const kingdomKeys = useMemo(
     () =>
@@ -200,16 +202,19 @@ export const useLensData = (
     staleTime: 1000 * 60 * 60,
   })
 
-  const datasetSummaries: DatasetSummary[] =
-    datasetQuery.data
-      ?.map((dataset) => ({
-        key: dataset.key,
-        title: dataset.title,
-        doi: dataset.doi,
-        publisher: dataset.publisher,
-        license: dataset.license,
-      }))
-      .filter((dataset) => dataset.title) ?? []
+  const datasetSummaries = useMemo<DatasetSummary[]>(() => {
+    return (
+      datasetQuery.data
+        ?.map((dataset) => ({
+          key: dataset.key,
+          title: dataset.title,
+          doi: dataset.doi,
+          publisher: dataset.publisher,
+          license: dataset.license,
+        }))
+        .filter((dataset) => dataset.title) ?? []
+    )
+  }, [datasetQuery.data])
 
   const maxSeasonality = useMemo(
     () => Math.max(...seasonalityData, 1),
@@ -225,7 +230,7 @@ export const useLensData = (
   const {
     signatureSpeciesData: liveSignatureSpecies,
     isReady: isSignatureReady,
-  } = useLiveSignatureSpecies(activePlace)
+  } = useLiveSignatureSpecies(activePlace, commonNameLanguage)
 
   const dedupedPools = useMemo(() => {
     return dedupeSpeciesAcrossLenses({

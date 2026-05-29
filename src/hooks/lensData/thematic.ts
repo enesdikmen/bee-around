@@ -28,6 +28,7 @@ export type ThematicLensResult = {
 export const useThematicLensData = (
   selectedPlace: Place | undefined,
   contentSeed: number,
+  commonNameLanguage: string,
 ): ThematicLensResult => {
   const currentMonth = new Date().getMonth() + 1
   const currentYear = new Date().getFullYear()
@@ -77,11 +78,11 @@ export const useThematicLensData = (
       if (picks.length >= stripSize) break
     }
 
-    return resolveSpeciesCards(picks, signal)
+    return resolveSpeciesCards(picks, signal, commonNameLanguage)
   }
 
   const inSeasonQuery = useQuery({
-    queryKey: ['lensInSeason', selectedPlace?.id, currentMonth],
+    queryKey: ['lensInSeason', selectedPlace?.id, currentMonth, commonNameLanguage],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       if (!selectedPlace) return []
       const response = await fetchOccurrenceFacets({
@@ -98,14 +99,14 @@ export const useThematicLensData = (
         .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
         .slice(0, IN_SEASON_RULE.stripSize)
         .map((c) => ({ ...c, highlight: IN_SEASON_RULE.highlight }))
-      return resolveSpeciesCards(picks, signal)
+      return resolveSpeciesCards(picks, signal, commonNameLanguage)
     },
     enabled: Boolean(selectedPlace),
     staleTime: 1000 * 60 * 30,
   })
 
   const smallWondersQuery = useQuery({
-    queryKey: ['lensSmallWonders', selectedPlace?.id],
+    queryKey: ['lensSmallWonders', selectedPlace?.id, commonNameLanguage],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       return resolveMergedStrip(
         SMALL_WONDERS_RULE.sources,
@@ -125,6 +126,7 @@ export const useThematicLensData = (
       selectedPlace?.id,
       recentStartYear,
       currentYear,
+      commonNameLanguage,
     ],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       if (!selectedPlace) return []
@@ -185,14 +187,14 @@ export const useThematicLensData = (
           highlight: `First local GBIF year ${item.earliestYear}`,
         }))
 
-      return resolveSpeciesCards(picks, signal)
+      return resolveSpeciesCards(picks, signal, commonNameLanguage)
     },
     enabled: Boolean(selectedPlace),
     staleTime: 1000 * 60 * 30,
   })
 
   const nightCreaturesQuery = useQuery({
-    queryKey: ['lensNightCreatures', selectedPlace?.id],
+    queryKey: ['lensNightCreatures', selectedPlace?.id, commonNameLanguage],
     queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
       return resolveMergedStrip(
         NIGHT_CREATURES_RULE.sources,

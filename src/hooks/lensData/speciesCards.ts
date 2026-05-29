@@ -27,10 +27,15 @@ export type SpeciesPick = {
 export const resolveSpeciesCards = async (
   picks: SpeciesPick[],
   signal: AbortSignal | undefined,
+  commonNameLanguage: string,
 ): Promise<SpeciesCard[]> => {
   return Promise.all(
     picks.map(async (item) => {
-      const species = await fetchSpecies({ speciesKey: item.speciesKey, signal })
+      const species = await fetchSpecies({
+        speciesKey: item.speciesKey,
+        signal,
+        language: commonNameLanguage,
+      })
       return {
         ...speciesCardBase(item.speciesKey, species),
         highlight: item.highlight,

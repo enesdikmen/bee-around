@@ -226,6 +226,14 @@ export function readShareFromLocation(): ShareState | null {
   return token ? decodeShare(token) : null
 }
 
+/** Read the `lang` param from the current URL, if any. */
+export function readLanguageFromLocation(): string | null {
+  if (typeof window === 'undefined') return null
+  const raw = new URL(window.location.href).searchParams.get('lang')
+  if (!raw) return null
+  return raw.trim().toLowerCase()
+}
+
 /**
  * Encode the lock list as a single compact `l=` param.
  *
@@ -300,19 +308,27 @@ export function syncShareToLocation(
   place: Place,
   seed: number,
   lockState?: { locks: LockEntry[] } | null,
+  language = 'en',
 ): void {
   if (typeof window === 'undefined') return
   const url = new URL(window.location.href)
   const token = encodeShare(place, seed)
   const lToken = lockState ? encodeLocks(lockState.locks) : null
+  const langToken = language.trim().toLowerCase() || 'en'
 
   const curSToken = url.searchParams.get('s')
   const curLToken = url.searchParams.get('l')
-  if (curSToken === token && (curLToken ?? null) === lToken) return
+  const curLangToken = (url.searchParams.get('lang') ?? 'en').trim().toLowerCase()
+  if (
+    curSToken === token &&
+    (curLToken ?? null) === lToken &&
+    curLangToken === langToken
+  ) return
 
   url.searchParams.set('s', token)
   if (lToken !== null) url.searchParams.set('l', lToken)
   else url.searchParams.delete('l')
+  url.searchParams.set('lang', langToken)
   // Clean up the legacy unlock-mask param if a previous version wrote it.
   url.searchParams.delete('u')
   window.history.replaceState(null, '', url.toString())

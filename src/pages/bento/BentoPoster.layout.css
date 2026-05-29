@@ -45,6 +45,44 @@ img[src=""] { visibility: hidden; }
 .bento-toolbar__btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 0 rgb(var(--color-ink)); }
 .bento-toolbar__btn--primary { background: rgb(var(--color-gold)); }
 
+.bento-toolbar__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.55rem;
+  border: 2px solid rgb(var(--color-ink));
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
+}
+
+.bento-toolbar__field-label {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(var(--color-ink-soft));
+}
+
+.bento-toolbar__select {
+  appearance: none;
+  border: 1.5px solid rgb(var(--color-ink));
+  border-radius: 7px;
+  background: #fff;
+  padding: 0.2rem 1.4rem 0.2rem 0.45rem;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--color-ink));
+  cursor: pointer;
+}
+
+.bento-toolbar__select:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 1px;
+}
+
 @media (max-width: 980px) {
   .bento-toolbar {
     left: 0.8rem;

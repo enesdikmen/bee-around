@@ -77,8 +77,8 @@ const releaseGbifSlot = () => {
 
 // Metadata endpoints are highly reusable across lenses. Keep a small in-memory
 // cache and in-flight registry so concurrent hooks share one network request.
-const speciesCache = new Map<number, GbifSpecies>()
-const speciesInFlight = new Map<number, Promise<GbifSpecies>>()
+const speciesCache = new Map<string, GbifSpecies>()
+const speciesInFlight = new Map<string, Promise<GbifSpecies>>()
 
 const datasetCache = new Map<string, GbifDataset>()
 const datasetInFlight = new Map<string, Promise<GbifDataset>>()
@@ -184,6 +184,7 @@ export interface GbifDataset {
 
 interface RequestOptions {
 	signal?: AbortSignal
+	headers?: HeadersInit
 }
 
 export interface OccurrenceFacetRequest extends RequestOptions {
@@ -207,6 +208,7 @@ export interface OccurrenceFacetRequest extends RequestOptions {
 
 export interface SpeciesRequest extends RequestOptions {
 	speciesKey: number
+	language?: string
 }
 
 export interface SpeciesMediaRequest extends RequestOptions {
@@ -253,6 +255,9 @@ const buildUrl = (
 	return url.toString()
 }
 
+const normalizeLanguage = (language?: string) =>
+	(language ?? '').trim().toLowerCase()
+
 // Centralized JSON fetch so we keep error messages consistent for UI + debugging.
 const fetchJson = async <T>(url: string, options: RequestOptions = {}) => {
 	await acquireGbifSlot(options.signal)
@@ -261,7 +266,10 @@ const fetchJson = async <T>(url: string, options: RequestOptions = {}) => {
 		for (let attempt = 0; attempt <= GBIF_MAX_429_RETRIES; attempt++) {
 			if (options.signal?.aborted) throw createAbortError()
 
-			const response = await fetch(url, { signal: options.signal })
+			const response = await fetch(url, {
+				signal: options.signal,
+				headers: options.headers,
+			})
 
 			if (response.ok) {
 				return (await response.json()) as T
@@ -326,24 +334,30 @@ export const fetchOccurrenceFacets = async ({
 	return fetchJson<OccurrenceFacetResponse>(url, { signal })
 }
 
-export const fetchSpecies = async ({ speciesKey, signal }: SpeciesRequest) => {
-	const cached = speciesCache.get(speciesKey)
+export const fetchSpecies = async ({ speciesKey, signal, language }: SpeciesRequest) => {
+	const normalizedLanguage = normalizeLanguage(language)
+	const cacheKey = `${speciesKey}:${normalizedLanguage || 'default'}`
+	const cached = speciesCache.get(cacheKey)
 	if (cached) return raceWithSignal(Promise.resolve(cached), signal)
 
-	const existing = speciesInFlight.get(speciesKey)
+	const existing = speciesInFlight.get(cacheKey)
 	if (existing) return raceWithSignal(existing, signal)
 
 	const url = buildUrl(`/species/${speciesKey}`, {})
-	const request = fetchJson<GbifSpecies>(url)
+	const request = fetchJson<GbifSpecies>(url, {
+		headers: normalizedLanguage
+			? { 'Accept-Language': normalizedLanguage }
+			: undefined,
+	})
 		.then((result) => {
-			speciesCache.set(speciesKey, result)
+			speciesCache.set(cacheKey, result)
 			return result
 		})
 		.finally(() => {
-			speciesInFlight.delete(speciesKey)
+			speciesInFlight.delete(cacheKey)
 		})
 
-	speciesInFlight.set(speciesKey, request)
+	speciesInFlight.set(cacheKey, request)
 	return raceWithSignal(request, signal)
 }
 
