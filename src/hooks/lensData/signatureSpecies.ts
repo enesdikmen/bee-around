@@ -67,13 +67,20 @@ export type SignatureSpeciesResult = {
   isReady: boolean
 }
 
+type ScoredSignatureCandidate = {
+  speciesKey: number
+  localCount: number
+  globalCount: number
+  ratio: number
+}
+
 export const useLiveSignatureSpecies = (
   selectedPlace?: Place,
   commonNameLanguage = 'en',
 ): SignatureSpeciesResult => {
-  const query = useQuery({
-    queryKey: ['liveSignatureSpecies', selectedPlace?.id, commonNameLanguage],
-    queryFn: async ({ signal }): Promise<SignatureSpeciesCard[]> => {
+  const scoreQuery = useQuery({
+    queryKey: ['liveSignatureSpeciesScores', selectedPlace?.id],
+    queryFn: async ({ signal }): Promise<ScoredSignatureCandidate[]> => {
       if (!selectedPlace || GLOBAL_TOTAL <= 0) return []
 
       const facetResp = await fetchOccurrenceFacets({
@@ -88,13 +95,7 @@ export const useLiveSignatureSpecies = (
       const counts = facetResp.facets?.[0]?.counts ?? []
       if (counts.length === 0) return []
 
-      type Scored = {
-        speciesKey: number
-        localCount: number
-        globalCount: number
-        ratio: number
-      }
-      const scored: Scored[] = []
+      const scored: ScoredSignatureCandidate[] = []
       for (const row of counts) {
         const speciesKey = Number(row.name)
         if (!Number.isFinite(speciesKey)) continue
@@ -117,9 +118,30 @@ export const useLiveSignatureSpecies = (
       )
       if (scored.length === 0) return []
 
-      const topScored = scored.slice(0, METADATA_CANDIDATE_POOL)
+      return scored.slice(0, METADATA_CANDIDATE_POOL)
+    },
+    enabled: Boolean(selectedPlace),
+    // Global baseline is static; place facet is moderately expensive.
+    staleTime: 1000 * 60 * 30,
+    // Keep one bounded retry above the centralized GBIF Retry-After logic
+    // for transient share-link failures without replaying the whole query too often.
+    retry: 1,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+  })
+
+  const scoredSpeciesKeys = scoreQuery.data?.map((entry) => entry.speciesKey) ?? []
+
+  const query = useQuery({
+    queryKey: [
+      'liveSignatureSpeciesInfo',
+      selectedPlace?.id,
+      commonNameLanguage,
+      scoredSpeciesKeys,
+    ],
+    queryFn: async ({ signal }): Promise<SignatureSpeciesCard[]> => {
+      const topScored = scoreQuery.data ?? []
       type ResolvedCandidate = {
-        entry: Scored
+        entry: ScoredSignatureCandidate
         species?: Awaited<ReturnType<typeof fetchSpecies>>
       }
 
@@ -197,19 +219,16 @@ export const useLiveSignatureSpecies = (
         }
       })
     },
-    enabled: Boolean(selectedPlace),
-    // Global baseline is static; place facet is moderately expensive.
-    staleTime: 1000 * 60 * 30,
-    // Share-link fidelity: if this query fails on a freshly opened share
-    // URL, the signature card slot collapses and the layout backfills it
-    // with a thematic card. Retry aggressively so a transient blip
-    // doesn't break reproducibility between tabs.
-    retry: 4,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    enabled: scoredSpeciesKeys.length > 0,
+    staleTime: 1000 * 60 * 60,
   })
 
   return {
     signatureSpeciesData: query.data ?? [],
-    isReady: !selectedPlace || query.isSuccess || query.isError,
+    isReady:
+      !selectedPlace ||
+      scoreQuery.isError ||
+      (scoreQuery.isSuccess &&
+        (scoredSpeciesKeys.length === 0 || query.isSuccess || query.isError)),
   }
 }

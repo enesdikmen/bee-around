@@ -83,6 +83,13 @@ const speciesInFlight = new Map<string, Promise<GbifSpecies>>()
 const datasetCache = new Map<string, GbifDataset>()
 const datasetInFlight = new Map<string, Promise<GbifDataset>>()
 
+const OCCURRENCE_FACET_CACHE_TTL_MS = 1000 * 60 * 30
+const occurrenceFacetCache = new Map<
+	string,
+	{ data: OccurrenceFacetResponse; expiresAt: number }
+>()
+const occurrenceFacetInFlight = new Map<string, Promise<OccurrenceFacetResponse>>()
+
 const raceWithSignal = <T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => {
 	if (!signal) return promise
 	if (signal.aborted) return Promise.reject(createAbortError())
@@ -331,7 +338,30 @@ export const fetchOccurrenceFacets = async ({
 		facetLimit,
 	})
 
-	return fetchJson<OccurrenceFacetResponse>(url, { signal })
+	const now = Date.now()
+	const cached = occurrenceFacetCache.get(url)
+	if (cached && cached.expiresAt > now) {
+		return raceWithSignal(Promise.resolve(cached.data), signal)
+	}
+	if (cached) occurrenceFacetCache.delete(url)
+
+	const existing = occurrenceFacetInFlight.get(url)
+	if (existing) return raceWithSignal(existing, signal)
+
+	const request = fetchJson<OccurrenceFacetResponse>(url)
+		.then((result) => {
+			occurrenceFacetCache.set(url, {
+				data: result,
+				expiresAt: Date.now() + OCCURRENCE_FACET_CACHE_TTL_MS,
+			})
+			return result
+		})
+		.finally(() => {
+			occurrenceFacetInFlight.delete(url)
+		})
+
+	occurrenceFacetInFlight.set(url, request)
+	return raceWithSignal(request, signal)
 }
 
 export const fetchSpecies = async ({ speciesKey, signal, language }: SpeciesRequest) => {

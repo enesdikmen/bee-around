@@ -9,7 +9,7 @@ import {
 } from '../../data/lensSelection'
 import type { Place, SpeciesCard, ThematicStripCard } from '../../types/lens'
 import { placeGeoParams, seededShuffle } from './shared'
-import { resolveSpeciesCards } from './speciesCards'
+import { resolveSpeciesCards, type SpeciesPick } from './speciesCards'
 
 /**
  * Each query fetches a small *candidate list* (not a single pick) so that
@@ -38,7 +38,7 @@ export const useThematicLensData = (
     facetLimit: number,
     stripSize: number,
     signal: AbortSignal | undefined,
-  ): Promise<SpeciesCard[]> => {
+  ): Promise<SpeciesPick[]> => {
     if (!selectedPlace) return []
 
     const baseReq = {
@@ -78,12 +78,12 @@ export const useThematicLensData = (
       if (picks.length >= stripSize) break
     }
 
-    return resolveSpeciesCards(picks, signal, commonNameLanguage)
+    return picks
   }
 
   const inSeasonQuery = useQuery({
-    queryKey: ['lensInSeason', selectedPlace?.id, currentMonth, commonNameLanguage],
-    queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
+    queryKey: ['lensInSeason', selectedPlace?.id, currentMonth],
+    queryFn: async ({ signal }): Promise<SpeciesPick[]> => {
       if (!selectedPlace) return []
       const response = await fetchOccurrenceFacets({
         ...placeGeoParams(selectedPlace),
@@ -99,15 +99,15 @@ export const useThematicLensData = (
         .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
         .slice(0, IN_SEASON_RULE.stripSize)
         .map((c) => ({ ...c, highlight: IN_SEASON_RULE.highlight }))
-      return resolveSpeciesCards(picks, signal, commonNameLanguage)
+      return picks
     },
     enabled: Boolean(selectedPlace),
     staleTime: 1000 * 60 * 30,
   })
 
   const smallWondersQuery = useQuery({
-    queryKey: ['lensSmallWonders', selectedPlace?.id, commonNameLanguage],
-    queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
+    queryKey: ['lensSmallWonders', selectedPlace?.id],
+    queryFn: async ({ signal }): Promise<SpeciesPick[]> => {
       return resolveMergedStrip(
         SMALL_WONDERS_RULE.sources,
         SMALL_WONDERS_RULE.facetLimit,
@@ -126,9 +126,8 @@ export const useThematicLensData = (
       selectedPlace?.id,
       recentStartYear,
       currentYear,
-      commonNameLanguage,
     ],
-    queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
+    queryFn: async ({ signal }): Promise<SpeciesPick[]> => {
       if (!selectedPlace) return []
 
       const response = await fetchOccurrenceFacets({
@@ -187,15 +186,15 @@ export const useThematicLensData = (
           highlight: `First local GBIF year ${item.earliestYear}`,
         }))
 
-      return resolveSpeciesCards(picks, signal, commonNameLanguage)
+      return picks
     },
     enabled: Boolean(selectedPlace),
     staleTime: 1000 * 60 * 30,
   })
 
   const nightCreaturesQuery = useQuery({
-    queryKey: ['lensNightCreatures', selectedPlace?.id, commonNameLanguage],
-    queryFn: async ({ signal }): Promise<SpeciesCard[]> => {
+    queryKey: ['lensNightCreatures', selectedPlace?.id],
+    queryFn: async ({ signal }): Promise<SpeciesPick[]> => {
       return resolveMergedStrip(
         NIGHT_CREATURES_RULE.sources,
         NIGHT_CREATURES_RULE.facetLimit,
@@ -207,6 +206,56 @@ export const useThematicLensData = (
     staleTime: 1000 * 60 * 30,
   })
 
+  const thematicPickGroups = useMemo(
+    () => [
+      { id: 'inSeason' as const, picks: inSeasonQuery.data ?? [] },
+      { id: 'smallWonders' as const, picks: smallWondersQuery.data ?? [] },
+      { id: 'brandNew' as const, picks: brandNewQuery.data ?? [] },
+      { id: 'nightCreatures' as const, picks: nightCreaturesQuery.data ?? [] },
+    ],
+    [
+      inSeasonQuery.data,
+      smallWondersQuery.data,
+      brandNewQuery.data,
+      nightCreaturesQuery.data,
+    ],
+  )
+
+  const thematicPickSignature = useMemo(
+    () =>
+      thematicPickGroups
+        .map((group) =>
+          `${group.id}:${group.picks
+            .map((p) => `${p.speciesKey}:${p.count}:${p.highlight}`)
+            .join('|')}`,
+        )
+        .join(';'),
+    [thematicPickGroups],
+  )
+
+  const thematicCardsQuery = useQuery({
+    queryKey: [
+      'thematicSpeciesCards',
+      selectedPlace?.id,
+      commonNameLanguage,
+      thematicPickSignature,
+    ],
+    queryFn: async ({ signal }) => {
+      const entries = await Promise.all(
+        thematicPickGroups.map(async (group) => [
+          group.id,
+          await resolveSpeciesCards(group.picks, signal, commonNameLanguage),
+        ] as const),
+      )
+      return Object.fromEntries(entries) as Record<
+        ThematicStripCard['id'],
+        SpeciesCard[]
+      >
+    },
+    enabled: thematicPickGroups.some((group) => group.picks.length > 0),
+    staleTime: 1000 * 60 * 60,
+  })
+
   const thematicStripCards = useMemo<ThematicStripCard[]>(() => {
     const monthLabel = new Date(2000, currentMonth - 1, 1).toLocaleString('en', {
       month: 'long',
@@ -215,22 +264,22 @@ export const useThematicLensData = (
       {
         id: 'inSeason',
         kicker: `🌸 In season · ${monthLabel}`,
-        species: inSeasonQuery.data ?? [],
+        species: thematicCardsQuery.data?.inSeason ?? [],
       },
       {
         id: 'smallWonders',
         kicker: '🐛 Small wonder',
-        species: smallWondersQuery.data ?? [],
+        species: thematicCardsQuery.data?.smallWonders ?? [],
       },
       {
         id: 'brandNew',
         kicker: '📸 Brand new here',
-        species: brandNewQuery.data ?? [],
+        species: thematicCardsQuery.data?.brandNew ?? [],
       },
       {
         id: 'nightCreatures',
         kicker: '🌃 Night creature',
-        species: nightCreaturesQuery.data ?? [],
+        species: thematicCardsQuery.data?.nightCreatures ?? [],
       },
     ]
     // Deterministic shuffle per place + seed; dedup picks the first two
@@ -241,19 +290,22 @@ export const useThematicLensData = (
     )
   }, [
     currentMonth,
-    inSeasonQuery.data,
-    smallWondersQuery.data,
-    brandNewQuery.data,
-    nightCreaturesQuery.data,
+    thematicCardsQuery.data,
     selectedPlace?.id,
     contentSeed,
   ])
 
+  const arePickQueriesReady = [
+    inSeasonQuery,
+    smallWondersQuery,
+    brandNewQuery,
+    nightCreaturesQuery,
+  ].every((q) => q.isSuccess || q.isError)
+  const hasThematicPicks = thematicPickGroups.some((group) => group.picks.length > 0)
   const isReady =
     !selectedPlace ||
-    [inSeasonQuery, smallWondersQuery, brandNewQuery, nightCreaturesQuery].every(
-      (q) => q.isSuccess || q.isError,
-    )
+    (arePickQueriesReady &&
+      (!hasThematicPicks || thematicCardsQuery.isSuccess || thematicCardsQuery.isError))
 
   return { thematicStripCards, isReady }
 }

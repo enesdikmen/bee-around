@@ -19,15 +19,44 @@ import { placeGeoParams, seededShuffle } from './shared'
 import { speciesCardBase } from './speciesCards'
 
 type TopSpeciesPoolData = {
-  slots: Array<{
-    slot: HeroSlotRule
-    candidates: SpeciesCard[]
-  }>
-  extraMiniSlots: Array<{
-    slot: HeroSlotRule
-    candidates: SpeciesCard[]
-  }>
+  slots: TopSpeciesSlotPool[]
+  extraMiniSlots: TopSpeciesSlotPool[]
 }
+
+type TopSpeciesSlotPool = {
+  slot: HeroSlotRule
+  pool: Array<{ speciesKey: number; count: number }>
+}
+
+const buildCandidates = (
+  pools: TopSpeciesSlotPool[],
+  speciesByKey: Map<number, Omit<SpeciesCard, 'highlight'>> | undefined,
+): Array<{
+  slot: HeroSlotRule
+  candidates: SpeciesCard[]
+}> =>
+  pools.map(({ slot, pool }) => {
+    const candidates: SpeciesCard[] = []
+    for (const candidate of pool) {
+      const base = speciesByKey?.get(candidate.speciesKey)
+      if (!base) continue
+      candidates.push({
+        ...base,
+        highlight: slot.label,
+        popularity: candidate.count,
+      })
+    }
+    // Keep only candidates with enough observations relative to the
+    // slot's top hit so sparse places don't surface irrelevant species.
+    const topCount = candidates[0]?.popularity ?? 0
+    const viable =
+      topCount > 0
+        ? candidates.filter(
+            (c) => (c.popularity ?? 0) >= topCount * MIN_COUNT_RATIO,
+          )
+        : candidates
+    return { slot, candidates: viable }
+  })
 
 export type TopSpeciesResult = {
   topSpeciesData: SpeciesCard[]
@@ -40,7 +69,7 @@ export const useTopSpeciesData = (
   commonNameLanguage: string,
 ): TopSpeciesResult => {
   const topSpeciesPoolQuery = useQuery({
-    queryKey: ['topSpeciesPool', selectedPlace?.id, commonNameLanguage],
+    queryKey: ['topSpeciesPool', selectedPlace?.id],
     queryFn: async ({ signal }): Promise<TopSpeciesPoolData> => {
       if (!selectedPlace) return { slots: [], extraMiniSlots: [] }
 
@@ -89,9 +118,41 @@ export const useTopSpeciesData = (
       const slotPools = await buildSlotPools(HERO_SLOT_RULES)
       const extraMiniSlotPools = await buildSlotPools(EXTRA_MINI_SLOT_RULES)
 
+      return { slots: slotPools, extraMiniSlots: extraMiniSlotPools }
+    },
+    enabled: Boolean(selectedPlace),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    // Share-link fidelity: hero/mini slots are deterministic only when
+    // this pool resolves successfully. Transient GBIF blips on a fresh
+    // tab would otherwise fall back to `fallbackTopSpecies`, changing
+    // every card on the poster.
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+  })
+
+  const uniqueSpeciesKeys = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...(topSpeciesPoolQuery.data?.slots ?? []),
+            ...(topSpeciesPoolQuery.data?.extraMiniSlots ?? []),
+          ].flatMap((item) => item.pool.map((p) => p.speciesKey)),
+        ),
+      ),
+    [topSpeciesPoolQuery.data],
+  )
+
+  const speciesInfoQuery = useQuery({
+    queryKey: ['topSpeciesInfo', selectedPlace?.id, commonNameLanguage, uniqueSpeciesKeys],
+    queryFn: async ({ signal }) => {
       const uniqueSpeciesKeys = Array.from(
         new Set(
-          [...slotPools, ...extraMiniSlotPools].flatMap((item) =>
+          [
+            ...(topSpeciesPoolQuery.data?.slots ?? []),
+            ...(topSpeciesPoolQuery.data?.extraMiniSlots ?? []),
+          ].flatMap((item) =>
             item.pool.map((p) => p.speciesKey),
           ),
         ),
@@ -118,56 +179,23 @@ export const useTopSpeciesData = (
         speciesByKey.set(info.speciesKey, info.cardBase)
       }
 
-      const buildCandidates = (
-        pools: Array<{
-          slot: HeroSlotRule
-          pool: Array<{ speciesKey: number; count: number }>
-        }>,
-      ): Array<{
-        slot: HeroSlotRule
-        candidates: SpeciesCard[]
-      }> =>
-        pools.map(({ slot, pool }) => {
-          const candidates: SpeciesCard[] = []
-          for (const candidate of pool) {
-            const base = speciesByKey.get(candidate.speciesKey)
-            if (!base) continue
-            candidates.push({
-              ...base,
-              highlight: slot.label,
-              popularity: candidate.count,
-            })
-          }
-          // Keep only candidates with enough observations relative to the
-          // slot's top hit so sparse places don't surface irrelevant species.
-          const topCount = candidates[0]?.popularity ?? 0
-          const viable =
-            topCount > 0
-              ? candidates.filter(
-                  (c) => (c.popularity ?? 0) >= topCount * MIN_COUNT_RATIO,
-                )
-              : candidates
-          return { slot, candidates: viable }
-        })
-
-      const slots = buildCandidates(slotPools)
-      const extraMiniSlots = buildCandidates(extraMiniSlotPools)
-
-      return { slots, extraMiniSlots }
+      return speciesByKey
     },
-    enabled: Boolean(selectedPlace),
-    staleTime: Infinity,
-    gcTime: Infinity,
-    // Share-link fidelity: hero/mini slots are deterministic only when
-    // this pool resolves successfully. Transient GBIF blips on a fresh
-    // tab would otherwise fall back to `fallbackTopSpecies`, changing
-    // every card on the poster.
-    retry: 4,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    enabled: uniqueSpeciesKeys.length > 0,
+    staleTime: 1000 * 60 * 60,
   })
 
+  const slots = useMemo(
+    () => buildCandidates(topSpeciesPoolQuery.data?.slots ?? [], speciesInfoQuery.data),
+    [topSpeciesPoolQuery.data?.slots, speciesInfoQuery.data],
+  )
+
+  const extraMiniSlots = useMemo(
+    () => buildCandidates(topSpeciesPoolQuery.data?.extraMiniSlots ?? [], speciesInfoQuery.data),
+    [topSpeciesPoolQuery.data?.extraMiniSlots, speciesInfoQuery.data],
+  )
+
   const topSpeciesData = useMemo(() => {
-    const slots = topSpeciesPoolQuery.data?.slots ?? []
     if (!slots.length) return fallbackTopSpecies
 
     const pickUnseenForSlot = (
@@ -193,11 +221,11 @@ export const useTopSpeciesData = (
       picks.push(chosen)
     }
 
-    const extraMiniSlots = seededShuffle(
-      topSpeciesPoolQuery.data?.extraMiniSlots ?? [],
+    const shuffledExtraMiniSlots = seededShuffle(
+      extraMiniSlots,
       `${selectedPlace?.id ?? 'none'}:extra-mini-slots:${contentSeed}`,
     )
-    for (const { slot, candidates } of extraMiniSlots) {
+    for (const { slot, candidates } of shuffledExtraMiniSlots) {
       if (picks.length >= slots.length + EXTRA_MINI_SLOT_COUNT) break
       if (!candidates.length) continue
       const chosen = pickUnseenForSlot(
@@ -226,13 +254,16 @@ export const useTopSpeciesData = (
     }
 
     return picks.length ? picks : fallbackTopSpecies
-  }, [topSpeciesPoolQuery.data, selectedPlace?.id, contentSeed])
+  }, [slots, extraMiniSlots, selectedPlace?.id, contentSeed])
 
   return {
     topSpeciesData,
     isReady:
       !selectedPlace ||
-      topSpeciesPoolQuery.isSuccess ||
-      topSpeciesPoolQuery.isError,
+      topSpeciesPoolQuery.isError ||
+      (topSpeciesPoolQuery.isSuccess &&
+        (uniqueSpeciesKeys.length === 0 ||
+          speciesInfoQuery.isSuccess ||
+          speciesInfoQuery.isError)),
   }
 }

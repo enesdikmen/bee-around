@@ -27,6 +27,8 @@ type ThreatenedCandidate = {
   winningCat: (typeof THREATENED_CATS)[number]
 }
 
+type ThreatenedPoolCandidate = Omit<ThreatenedCandidate, 'group' | 'species'>
+
 export const useConservationSnapshot = (
   selectedPlace: Place | undefined,
   contentSeed: number,
@@ -59,9 +61,9 @@ export const useConservationSnapshot = (
     staleTime: 1000 * 60 * 10,
   })
 
-  const threatenedSpeciesQuery = useQuery({
-    queryKey: ['threatenedSpecies', selectedPlace?.id, commonNameLanguage],
-    queryFn: async ({ signal }): Promise<ThreatenedCandidate[]> => {
+  const threatenedSpeciesPoolQuery = useQuery({
+    queryKey: ['threatenedSpeciesPool', selectedPlace?.id],
+    queryFn: async ({ signal }): Promise<ThreatenedPoolCandidate[]> => {
       if (!selectedPlace) return []
 
       // Cascade: use the highest severity that has results.
@@ -86,9 +88,27 @@ export const useConservationSnapshot = (
       }
       if (!raw.length) return []
 
-      // Resolve species info so we can class-cap.
+      return raw.map((item) => ({ ...item, winningCat }))
+    },
+    enabled: Boolean(selectedPlace),
+    staleTime: 1000 * 60 * 30,
+  })
+
+  const threatenedSpeciesKeys = useMemo(
+    () => threatenedSpeciesPoolQuery.data?.map((item) => item.speciesKey) ?? [],
+    [threatenedSpeciesPoolQuery.data],
+  )
+
+  const threatenedSpeciesQuery = useQuery({
+    queryKey: [
+      'threatenedSpeciesInfo',
+      selectedPlace?.id,
+      commonNameLanguage,
+      threatenedSpeciesKeys,
+    ],
+    queryFn: async ({ signal }): Promise<ThreatenedCandidate[]> => {
       const resolved = await Promise.all(
-        raw.map(async (item) => {
+        (threatenedSpeciesPoolQuery.data ?? []).map(async (item) => {
           const species = await fetchSpecies({
             speciesKey: item.speciesKey,
             signal,
@@ -110,12 +130,12 @@ export const useConservationSnapshot = (
           count: item.count,
           group,
           species: item.species,
-          winningCat,
+          winningCat: item.winningCat,
         }
       })
     },
-    enabled: Boolean(selectedPlace),
-    staleTime: 1000 * 60 * 30,
+    enabled: threatenedSpeciesKeys.length > 0,
+    staleTime: 1000 * 60 * 60,
   })
 
   const snapshot = useMemo<ConservationSnapshot>(() => {
@@ -185,9 +205,11 @@ export const useConservationSnapshot = (
 
   const isReady =
     !selectedPlace ||
-    [speciesCountsQuery, threatenedSpeciesQuery].every(
-      (q) => q.isSuccess || q.isError,
-    )
+    ((speciesCountsQuery.isSuccess || speciesCountsQuery.isError) &&
+      (threatenedSpeciesPoolQuery.isSuccess || threatenedSpeciesPoolQuery.isError) &&
+      (threatenedSpeciesKeys.length === 0 ||
+        threatenedSpeciesQuery.isSuccess ||
+        threatenedSpeciesQuery.isError))
 
   return { snapshot, isReady }
 }
