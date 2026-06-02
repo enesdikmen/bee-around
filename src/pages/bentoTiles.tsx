@@ -109,7 +109,6 @@ export type CardDef = {
 }
 
 const THEMATIC_PRIMARY_COUNT = 2
-const THEMATIC_BACKUP_INDEX = THEMATIC_PRIMARY_COUNT
 const THEMATIC_CARD_CLASS =
   'bento-card bento-card--mini bento-card--thematic accent-gold'
 
@@ -824,7 +823,7 @@ export const CARD_DEFS: CardDef[] = [
                   size={180}
                   bgColor="transparent"
                   fgColor="#1a1a1a"
-                  level="H"
+                  level="L"
                   marginSize={0}
                 />
               </div>
@@ -885,28 +884,29 @@ export function buildBentoTiles(args: BuildTilesArgs): Tile[] {
 }
 
 /**
- * Optional 1x1 fallback thematic tile.
+ * Optional 1x1 fallback thematic tiles.
  *
  * Uses the same precomputed thematic pool and rendering logic as the main
- * thematic cards, but targets the next thematic candidate (index 2). The
- * caller decides whether to append this tile (e.g. only when one cell is empty).
+ * thematic cards, but targets the candidates after the 2 primary slots.
+ * The caller decides how many of these to append when post-lock merges
+ * create 1x1 gaps.
  */
-export function buildThematicBackupTile(data: LensData): Tile | null {
-  const card = data.thematicStripCards[THEMATIC_BACKUP_INDEX]
-  if (!card) return null
-  const inst = toThematicTileInstance(card, THEMATIC_BACKUP_INDEX)
-  if (!inst) return null
-  return {
-    id: inst.id,
-    w: inst.size?.w ?? 1,
-    h: inst.size?.h ?? 1,
-    anchor: inst.anchor,
-    pin: inst.pin,
-    className: inst.className ?? THEMATIC_CARD_CLASS,
-    render: inst.render,
-    slotId: inst.slotId,
-    speciesIds: inst.speciesIds,
-  }
+export function buildThematicBackupTiles(data: LensData): Tile[] {
+  return data.thematicStripCards
+    .slice(THEMATIC_PRIMARY_COUNT)
+    .map((card, offset) => toThematicTileInstance(card, THEMATIC_PRIMARY_COUNT + offset))
+    .filter((inst): inst is NonNullable<typeof inst> => inst !== null)
+    .map((inst) => ({
+      id: inst.id,
+      w: inst.size?.w ?? 1,
+      h: inst.size?.h ?? 1,
+      anchor: inst.anchor,
+      pin: inst.pin,
+      className: inst.className ?? THEMATIC_CARD_CLASS,
+      render: inst.render,
+      slotId: inst.slotId,
+      speciesIds: inst.speciesIds,
+    }))
 }
 
 /** Pad with invisible 1×1 fillers. When `targetArea` is set, pad up to that

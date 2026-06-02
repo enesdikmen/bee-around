@@ -15,9 +15,9 @@
  *   1. `topSpeciesData`        — hero tile + mini gallery (claims all)
  *   2. `threatenedSpecies`     — at-risk card (claims the survivor it renders)
  *   3. `thematicStripCards[*]` — themed strips, processed in array order;
- *                                first `MAX_THEMATIC_STRIPS` with non-empty
- *                                survivors are kept (2 primary + 1 backup
- *                                candidate for 1x1 hole-filling).
+ *                                first 2 non-empty survivors are the primary
+ *                                tiles and the next 2 are kept as backup
+ *                                candidates for post-lock 1x1 hole-filling.
  *   4. `signatureSpeciesData`  — pool for the signature-species card.
  *                                Filtered against everything above so the
  *                                random pick never duplicates a species
@@ -29,7 +29,8 @@
  */
 import type { LensData } from './types'
 
-const MAX_THEMATIC_STRIPS = 3
+const MAX_THEMATIC_PRIMARY_STRIPS = 2
+const MAX_THEMATIC_CANDIDATES = 4
 
 export const dedupeSpeciesAcrossLenses = (data: LensData): LensData => {
   const claimed = new Set<string>()
@@ -44,15 +45,23 @@ export const dedupeSpeciesAcrossLenses = (data: LensData): LensData => {
     .filter((sp) => !claimed.has(sp.id))
   for (const sp of threatenedSpecies) claimed.add(sp.id)
 
-  // 3. Thematic strips: keep only themes that still have a renderable
-  //    species[0] after filtering, up to MAX_THEMATIC_STRIPS.
+  // 3. Thematic strips: keep up to 2 primary tiles plus 2 backup
+  //    candidates. Backup candidates are filtered against higher-priority
+  //    claims and earlier thematics so they stay unique, but they do not
+  //    claim against signature species until the poster actually uses them.
   const thematicStripCards: LensData['thematicStripCards'] = []
+  const thematicClaimed = new Set(claimed)
+  let primaryThematicCount = 0
   for (const card of data.thematicStripCards) {
-    const species = card.species.filter((sp) => !claimed.has(sp.id))
+    const species = card.species.filter((sp) => !thematicClaimed.has(sp.id))
     if (species.length === 0) continue
-    claimed.add(species[0].id)
     thematicStripCards.push({ ...card, species })
-    if (thematicStripCards.length >= MAX_THEMATIC_STRIPS) break
+    thematicClaimed.add(species[0].id)
+    if (primaryThematicCount < MAX_THEMATIC_PRIMARY_STRIPS) {
+      claimed.add(species[0].id)
+      primaryThematicCount += 1
+    }
+    if (thematicStripCards.length >= MAX_THEMATIC_CANDIDATES) break
   }
 
   // 4. Signature species: pass through the survivors so the card can pick

@@ -22,7 +22,7 @@ import type { Place } from '../types/lens'
 import { ALL_IMAGE_SOURCES } from '../api/speciesImage'
 import {
   buildBentoTiles,
-  buildThematicBackupTile,
+  buildThematicBackupTiles,
   padToRectangle,
   POSTER_GRID_AREA,
   POSTER_GRID_H,
@@ -344,14 +344,17 @@ function BentoPoster({
       url.searchParams.set('lang', commonNameLanguage)
       restoreShareUrl = url.toString()
     }
-    const restoredTiles = buildBentoTiles({
+    const restoredTiles = [
+      ...buildBentoTiles({
       placeName,
       latitude,
       longitude,
       data: lockData,
       contentSeed: restoreSeed,
       shareUrl: restoreShareUrl,
-    })
+      }),
+      ...buildThematicBackupTiles(lockData),
+    ]
     const resolved = new Map<string, Lock>()
     const remaining: LockEntry[] = []
     for (const entry of pendingLocks) {
@@ -446,20 +449,37 @@ function BentoPoster({
       merged.push({ ...lock.tile })
     }
 
-    // Optional thematic fallback: if we are short by exactly one cell, use
-    // the third precomputed thematic candidate before inserting a filler.
+    // Optional thematic fallback: if lock collisions made us short, use up
+    // to two precomputed backup thematics before inserting invisible filler.
     const mergedArea = merged.reduce((sum, t) => sum + t.w * t.h, 0)
-    if (POSTER_GRID_AREA - mergedArea === 1 && displayData) {
-      const backup = buildThematicBackupTile(displayData)
-      if (backup) {
-        const hasSameSlot =
-          !!backup.slotId && merged.some((t) => t.slotId === backup.slotId)
-        const hasSameId = merged.some((t) => t.id === backup.id)
-        const collidesWithLockedSpecies =
-          !!backup.speciesIds?.some((id) => lockedSpeciesIds.has(id))
-        if (!hasSameSlot && !hasSameId && !collidesWithLockedSpecies) {
-          merged.push(backup)
-        }
+    if (mergedArea < POSTER_GRID_AREA && displayData) {
+      let missingArea = POSTER_GRID_AREA - mergedArea
+      const occupiedSlotIds = new Set(
+        merged
+          .map((t) => t.slotId)
+          .filter((slotId): slotId is string => !!slotId),
+      )
+      const occupiedIds = new Set(merged.map((t) => t.id))
+      const occupiedSpeciesIds = new Set<string>()
+      for (const tile of merged) {
+        for (const sid of tile.speciesIds ?? []) occupiedSpeciesIds.add(sid)
+      }
+
+      for (const backup of buildThematicBackupTiles(displayData)) {
+        const area = backup.w * backup.h
+        if (area > missingArea) continue
+        const hasSameSlot = !!backup.slotId && occupiedSlotIds.has(backup.slotId)
+        const hasSameId = occupiedIds.has(backup.id)
+        const collidesWithVisibleSpecies =
+          !!backup.speciesIds?.some((id) => occupiedSpeciesIds.has(id))
+        if (hasSameSlot || hasSameId || collidesWithVisibleSpecies) continue
+
+        merged.push(backup)
+        occupiedIds.add(backup.id)
+        if (backup.slotId) occupiedSlotIds.add(backup.slotId)
+        for (const sid of backup.speciesIds ?? []) occupiedSpeciesIds.add(sid)
+        missingArea -= area
+        if (missingArea <= 0) break
       }
     }
 
