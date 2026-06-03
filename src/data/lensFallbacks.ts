@@ -13,6 +13,12 @@ export const places: Place[] = [
     latitude: 48.137154,
     longitude: 11.576124,
     radiusKm: 35,
+    bbox: {
+      minLat: 48.0616244,
+      maxLat: 48.2481162,
+      minLon: 11.360777,
+      maxLon: 11.7229099,
+    },
   },
   {
     id: 'nairobi-ke',

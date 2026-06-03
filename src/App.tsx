@@ -12,10 +12,16 @@ import type { Place } from './types/lens'
 const initialShare = readShareFromLocation()
 const initialLocks = readLocksFromLocation()
 const initialLanguage = readLanguageFromLocation()
+const defaultPlace = canonicalizePlace({
+  ...places[0],
+  // Treat first-load Munich like a searched city so URL/state mirrors
+  // selector-driven custom-place behavior (`c.*` token path).
+  id: 'default-munich-bootstrap',
+})
 
 function App() {
   const [selectedPlace, setSelectedPlace] = useState<Place>(
-    initialShare?.place ?? places[0],
+    initialShare?.place ?? defaultPlace,
   )
 
   // Always canonicalize so the sharer's `place.id`/`label` match what a
