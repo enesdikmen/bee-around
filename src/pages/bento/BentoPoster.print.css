@@ -102,6 +102,11 @@
     box-shadow: none !important;
   }
 
+  /* Lock markers are interaction affordances; suppress in exported PDF. */
+  .bento-card--locked {
+    outline: none !important;
+  }
+
   /* Filler tiles exist purely for layout; on print, leave them in
      place but make them visually quieter (they already are at 0.45
      opacity — keep that). No override needed. */
