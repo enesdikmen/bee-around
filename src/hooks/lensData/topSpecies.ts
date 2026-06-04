@@ -12,6 +12,7 @@ import {
   HERO_SLOT_RULES,
   MAX_SPECIES_MINI_COUNT,
   MIN_COUNT_RATIO,
+  MIN_VIABLE_CANDIDATES,
   type HeroSlotRule,
 } from '../../data/lensSelection'
 import type { Place, SpeciesCard } from '../../types/lens'
@@ -47,12 +48,16 @@ const buildCandidates = (
       })
     }
     // Keep only candidates with enough observations relative to the
-    // slot's top hit so sparse places don't surface irrelevant species.
+    // slot's top hit so sparse places don't surface irrelevant species,
+    // but always keep at least MIN_VIABLE_CANDIDATES so a single dominant
+    // species can't collapse the slot to one pick.
     const topCount = candidates[0]?.popularity ?? 0
     const viable =
       topCount > 0
         ? candidates.filter(
-            (c) => (c.popularity ?? 0) >= topCount * MIN_COUNT_RATIO,
+            (c, i) =>
+              i < MIN_VIABLE_CANDIDATES ||
+              (c.popularity ?? 0) >= topCount * MIN_COUNT_RATIO,
           )
         : candidates
     return { slot, candidates: viable }

@@ -46,7 +46,15 @@ export const DEFAULT_PICK_FROM_TOP = 3
  * observation count to be eligible for seeded rotation.  Keeps sparse-place
  * slots from surfacing near-zero-observation species.
  */
-export const MIN_COUNT_RATIO = 0.3
+export const MIN_COUNT_RATIO = 0.1
+
+/**
+ * Always keep at least this many top candidates per slot regardless of the
+ * ratio filter, so a single dominant species can't collapse the slot to one
+ * pick (e.g. a heavily-recorded bat in France). The ratio filter still trims
+ * anything past this floor.
+ */
+export const MIN_VIABLE_CANDIDATES = 2
 
 export const HERO_SLOT_RULES: HeroSlotRule[] = [
   {
