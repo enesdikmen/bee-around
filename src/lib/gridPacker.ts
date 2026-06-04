@@ -173,8 +173,17 @@ export function pack({ width, height, boxes, seed }: PackInput): PackResult | nu
   }
 
   // 3. Backtracking.
+  // Guard against pathological (unpackable / overflowing) inputs: backtracking
+  // over a fully-occupied grid is exponential, and this runs synchronously on
+  // the main thread inside a render. A node budget bounds the worst case so an
+  // impossible layout fails fast (returns null) instead of freezing the UI.
+  // The grid is tiny (e.g. 6×4), so any genuinely solvable layout is found in
+  // far fewer nodes than this cap — valid posters are unaffected.
+  const MAX_NODES = 30_000
+  let nodes = 0
   function solve(i: number): boolean {
     if (i >= ordered.length) return true
+    if (++nodes > MAX_NODES) return false
     const spec = ordered[i]
     const cands = candidatesFor(spec, grid, W, H, rnd)
     for (const { x, y } of cands) {
@@ -183,6 +192,7 @@ export function pack({ width, height, boxes, seed }: PackInput): PackResult | nu
       if (solve(i + 1)) return true
       placements.pop()
       mark(grid, W, x, y, spec.w, spec.h, 0)
+      if (nodes > MAX_NODES) return false
     }
     return false
   }
@@ -203,9 +213,19 @@ export function packWithRetries(
   input: PackInput,
   retries = 20,
 ): PackResult | null {
+  // Wall-clock safety net: even with the per-pack node cap, an unpackable
+  // input would otherwise burn `retries` full searches back-to-back on the
+  // main thread. Bail out early once we've spent too long so the UI stays
+  // responsive; a solvable layout returns on its first successful seed long
+  // before this deadline.
+  const deadline =
+    (typeof performance !== 'undefined' ? performance.now() : Date.now()) + 250
   for (let i = 0; i < retries; i++) {
     const r = pack({ ...input, seed: input.seed + i * 7919 })
     if (r) return r
+    const now =
+      typeof performance !== 'undefined' ? performance.now() : Date.now()
+    if (now > deadline) return null
   }
   return null
 }

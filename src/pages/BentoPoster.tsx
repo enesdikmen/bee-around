@@ -438,19 +438,30 @@ function BentoPoster({
       merged.push(t)
     }
     // Locked slots that no longer appear in the fresh build (e.g. a thematic
-    // strip that dropped out for this seed) still need to be rendered.
+    // strip that dropped out for this seed) still need to be rendered — but
+    // only while they fit. Appending a stale locked tile onto an already-full
+    // 24-cell grid would make the tile set unpackable, so `pack()` returns
+    // null and the whole poster renders empty. Guard the running area so the
+    // merged set is always within `POSTER_GRID_AREA` and stays packable.
+    let usedArea = merged.reduce((sum, t) => sum + t.w * t.h, 0)
     for (const [slotId, lock] of locks) {
       if (seenSlots.has(slotId)) continue
+      const area = lock.tile.w * lock.tile.h
+      if (usedArea + area > POSTER_GRID_AREA) continue
       merged.push({ ...lock.tile, pinXY: { x: lock.x, y: lock.y } })
+      usedArea += area
     }
     for (const [slotId, lock] of unlockOverrides) {
       if (seenSlots.has(slotId)) continue
+      const area = lock.tile.w * lock.tile.h
+      if (usedArea + area > POSTER_GRID_AREA) continue
       merged.push({ ...lock.tile })
+      usedArea += area
     }
 
     // Optional thematic fallback: if lock collisions made us short, use up
     // to two precomputed backup thematics before inserting invisible filler.
-    const mergedArea = merged.reduce((sum, t) => sum + t.w * t.h, 0)
+    const mergedArea = usedArea
     if (mergedArea < POSTER_GRID_AREA && displayData) {
       let missingArea = POSTER_GRID_AREA - mergedArea
       const occupiedSlotIds = new Set(
