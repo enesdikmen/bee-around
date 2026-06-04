@@ -132,6 +132,7 @@ function toPlace(r: NominatimSearchResult): Place {
     id: `osm-${r.place_id}`,
     label,
     country,
+    ...(cc ? { countryCode: cc } : {}),
     latitude: parseFloat(r.lat),
     longitude: parseFloat(r.lon),
     radiusKm: 35,

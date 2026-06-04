@@ -6,6 +6,7 @@ export const placeGeoParams = (place: Place) => ({
   longitude: place.longitude,
   radiusKm: place.radiusKm,
   bbox: place.bbox,
+  countryCode: place.countryCode,
 })
 
 const hashText = (value: string) => {

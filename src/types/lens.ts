@@ -11,6 +11,8 @@ export type Place = {
   id: string
   label: string
   country: string
+  /** ISO-2 country code (uppercase), when available. */
+  countryCode?: string
   latitude: number
   longitude: number
   /** Fallback radius (km) used when no bbox is available. */

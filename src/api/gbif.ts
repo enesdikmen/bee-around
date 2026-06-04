@@ -200,6 +200,8 @@ export interface OccurrenceFacetRequest extends RequestOptions {
 	radiusKm?: number
 	/** Real bounding box (preferred over radiusKm when set). */
 	bbox?: { minLat: number; maxLat: number; minLon: number; maxLon: number }
+	/** ISO-2 country code for country-scale searches. */
+	countryCode?: string
 	facetFields: FacetField[]
 	facetLimit?: number
 	classKey?: number | number[]
@@ -265,6 +267,20 @@ const buildUrl = (
 const normalizeLanguage = (language?: string) =>
 	(language ?? '').trim().toLowerCase()
 
+const normalizeCountryCode = (countryCode?: string) => {
+	const cc = (countryCode ?? '').trim().toUpperCase()
+	return /^[A-Z]{2}$/.test(cc) ? cc : null
+}
+
+const isCountryScaleBBox = (
+	bbox: { minLat: number; maxLat: number; minLon: number; maxLon: number } | undefined,
+) => {
+	if (!bbox) return false
+	const latSpan = Math.abs(bbox.maxLat - bbox.minLat)
+	const lonSpan = Math.abs(bbox.maxLon - bbox.minLon)
+	return latSpan >= 20 || lonSpan >= 40
+}
+
 // Centralized JSON fetch so we keep error messages consistent for UI + debugging.
 const fetchJson = async <T>(url: string, options: RequestOptions = {}) => {
 	await acquireGbifSlot(options.signal)
@@ -303,6 +319,7 @@ export const fetchOccurrenceFacets = async ({
 	longitude,
 	radiusKm = 35,
 	bbox,
+	countryCode,
 	facetFields,
 	facetLimit = 10,
 	classKey,
@@ -316,6 +333,9 @@ export const fetchOccurrenceFacets = async ({
 	year,
 	signal,
 }: OccurrenceFacetRequest) => {
+	const normalizedCountryCode = normalizeCountryCode(countryCode)
+	const useCountryFilter = Boolean(normalizedCountryCode && isCountryScaleBBox(bbox))
+
 	// Geometry: prefer the real bbox from Nominatim, else fall back to a
 	// bbox derived from radiusKm.
 	const b = bbox ?? toBounds(latitude, longitude, radiusKm)
@@ -323,8 +343,9 @@ export const fetchOccurrenceFacets = async ({
 	const url = buildUrl('/occurrence/search', {
 		limit: 0,
 		// Using facets with limit=0 keeps payloads small while still returning summary counts.
-		decimalLatitude: `${b.minLat},${b.maxLat}`,
-		decimalLongitude: `${b.minLon},${b.maxLon}`,
+		decimalLatitude: useCountryFilter ? undefined : `${b.minLat},${b.maxLat}`,
+		decimalLongitude: useCountryFilter ? undefined : `${b.minLon},${b.maxLon}`,
+		country: useCountryFilter ? normalizedCountryCode ?? undefined : undefined,
 		classKey,
 		kingdomKey,
 		orderKey,

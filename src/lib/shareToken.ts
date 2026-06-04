@@ -4,9 +4,10 @@
  *
  * Current format (compact):
  * - Known fallback city:    k.<seed36>.<index36>
- * - Custom searched city:   c.<seed36>.<lat>.<lon>.<r10>.<bbox|_>.<nameB64>
+ * - Custom searched city:   c.<seed36>.<lat>.<lon>.<r10>.<bbox|_>.<nameB64>[.<cc>]
  *   where lat/lon/bbox are signed base36 ints scaled by 1e4, r10 is
- *   radiusKm scaled by 10, and nameB64 is base64url(city short name).
+ *   radiusKm scaled by 10, nameB64 is base64url(city short name), and
+ *   cc is optional uppercase ISO-2 country code.
  *
  * Both sides MUST run `canonicalizePlace` on the Place before using it,
  * so that `place.id` and `place.label` are stable functions of the
@@ -52,6 +53,10 @@ const KNOWN_BY_ID = new Map(places.map((p, i) => [p.id, i]))
 export function canonicalizePlace(place: Place): Place {
   if (KNOWN_BY_ID.has(place.id)) return place
   const shortName = (place.label ?? '').split(',')[0]?.trim() ?? ''
+  const countryCode = (place.countryCode ?? '').trim().toUpperCase()
+  const normalizedCountryCode = /^[A-Z]{2}$/.test(countryCode)
+    ? countryCode
+    : undefined
   const lat = Math.round(place.latitude * SCALE)
   const lon = Math.round(place.longitude * SCALE)
   const r10 = Math.max(1, Math.round(place.radiusKm * RADIUS_SCALE))
@@ -82,6 +87,7 @@ export function canonicalizePlace(place: Place): Place {
     latitude: lat / SCALE,
     longitude: lon / SCALE,
     radiusKm: r10 / RADIUS_SCALE,
+    ...(normalizedCountryCode ? { countryCode: normalizedCountryCode } : {}),
     ...(quantizedBbox ? { bbox: quantizedBbox } : {}),
     id,
     label,
@@ -135,7 +141,9 @@ export function encodeShare(place: Place, seed: number): string {
     : '_'
   const shortName = (place.label ?? '').split(',')[0]?.trim() ?? ''
   const nameB64 = toB64Utf8(shortName)
-  return `c.${safeSeed.toString(36)}.${lat}.${lon}.${r10}.${bbox}.${nameB64}`
+  const countryCode = (place.countryCode ?? '').trim().toUpperCase()
+  const ccPart = /^[A-Z]{2}$/.test(countryCode) ? `.${countryCode}` : ''
+  return `c.${safeSeed.toString(36)}.${lat}.${lon}.${r10}.${bbox}.${nameB64}${ccPart}`
 }
 
 export function decodeShare(token: string): ShareState | null {
@@ -155,11 +163,11 @@ export function decodeShare(token: string): ShareState | null {
   }
 
   // Compact custom-city token:
-  // - current: c.<seed36>.<lat>.<lon>.<r10>.<bbox|_>.<nameB64>
+  // - current: c.<seed36>.<lat>.<lon>.<r10>.<bbox|_>.<nameB64>[.<cc>]
   // - accepted legacy compact variant: c.<seed36>.<lat>.<lon>.<r10>.<bbox|_>
   if (token.startsWith('c.')) {
     const parts = token.split('.')
-    if (!(parts.length === 6 || parts.length === 7)) return null
+    if (!(parts.length === 6 || parts.length === 7 || parts.length === 8)) return null
     const seed = Number.parseInt(parts[1], 36)
     const latI = decSignedInt(parts[2])
     const lonI = decSignedInt(parts[3])
@@ -190,13 +198,19 @@ export function decodeShare(token: string): ShareState | null {
     }
 
     let label = ''
-    if (parts.length === 7) {
+    if (parts.length >= 7) {
       try {
         label = fromB64Utf8(parts[6])
       } catch {
         label = ''
       }
     }
+
+    const rawCountryCode = parts.length === 8 ? parts[7].trim().toUpperCase() : ''
+    const countryCode = /^[A-Z]{2}$/.test(rawCountryCode)
+      ? rawCountryCode
+      : undefined
+
     const latitude = latI / SCALE
     const longitude = lonI / SCALE
     const radiusKm = Math.max(1, r10 / RADIUS_SCALE)
@@ -204,6 +218,7 @@ export function decodeShare(token: string): ShareState | null {
       id: 'tmp',
       label,
       country: '',
+      ...(countryCode ? { countryCode } : {}),
       latitude,
       longitude,
       radiusKm,
