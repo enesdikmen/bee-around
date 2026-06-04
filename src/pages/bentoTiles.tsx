@@ -816,37 +816,51 @@ export const CARD_DEFS: CardDef[] = [
     type: 'sources',
     size: { w: 2, h: 1 },
     className: 'bento-card accent-gold bento-sources',
-    build: ({ data, shareUrl, uiText }) => [
-      {
-        id: 'sources',
-        slotId: 'sources',
-        render: () => (
-          <>
-            <div className="bento-sources__text">
-              <span className="bento-card__kicker">{uiText.poster.sources}</span>
-              <p className="bento-card__sub">
-                <strong>GBIF</strong> · <strong>Lynxee</strong>
-              </p>
-              {data.datasetSummaries.length > 0 && (
-                <p className="bento-datasets">{data.datasetSummaries[0]?.title}</p>
-              )}
-            </div>
-            {shareUrl && (
-              <div className="bento-sources__qr" aria-label={uiText.poster.scanQr}>
-                <QRCodeSVG
-                  value={shareUrl}
-                  size={180}
-                  bgColor="transparent"
-                  fgColor="#1a1a1a"
-                  level="L"
-                  marginSize={0}
-                />
+    build: ({ shareUrl, uiText }) => {
+      const gbifLogoSrc = `${import.meta.env.BASE_URL}gbif-logo.png`
+      return [
+        {
+          id: 'sources',
+          slotId: 'sources',
+          render: () => (
+            <>
+              <div className="bento-sources__text">
+                <span className="bento-card__kicker">Powered by</span>
+                <a
+                  className="bento-sources__logo-link"
+                  href="https://www.gbif.org/dataset/search"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Open GBIF datasets page"
+                  title="Open GBIF datasets page"
+                >
+                  <img
+                    src={gbifLogoSrc}
+                    alt="GBIF"
+                    className="bento-sources__logo"
+                    loading="eager"
+                    decoding="async"
+                  />
+                </a>
+                <p className="bento-sources__line">Global Biodiversity Information Facility</p>
               </div>
-            )}
-          </>
-        ),
-      },
-    ],
+              {shareUrl && (
+                <div className="bento-sources__qr" aria-label={uiText.poster.scanQr}>
+                  <QRCodeSVG
+                    value={shareUrl}
+                    size={160}
+                    bgColor="transparent"
+                    fgColor="#1a1a1a"
+                    level="L"
+                    marginSize={0}
+                  />
+                </div>
+              )}
+            </>
+          ),
+        },
+      ]
+    },
   },
 ]
 

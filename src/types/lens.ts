@@ -70,6 +70,8 @@ export type ConservationSnapshot = {
 export type DatasetSummary = {
   key: string
   title: string
+  /** Number of matching occurrence records in the current place snapshot. */
+  occurrenceCount?: number
   doi?: string
   publisher?: string
   license?: string

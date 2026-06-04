@@ -188,6 +188,13 @@ export const useLensData = (
       .map((item) => item.name)
   }, [facetsSummary])
 
+  const datasetCountsByKey = useMemo<Record<string, number>>(() => {
+    if (!facetsSummary?.datasetKey?.length) return {}
+    return Object.fromEntries(
+      facetsSummary.datasetKey.map((item) => [item.name, item.count]),
+    )
+  }, [facetsSummary])
+
   const datasetQuery = useQuery({
     queryKey: ['topDatasets', datasetKeys],
     queryFn: async ({ signal }) => {
@@ -208,13 +215,14 @@ export const useLensData = (
         ?.map((dataset) => ({
           key: dataset.key,
           title: dataset.title,
+          occurrenceCount: datasetCountsByKey[dataset.key] ?? 0,
           doi: dataset.doi,
           publisher: dataset.publisher,
           license: dataset.license,
         }))
         .filter((dataset) => dataset.title) ?? []
     )
-  }, [datasetQuery.data])
+  }, [datasetQuery.data, datasetCountsByKey])
 
   const maxSeasonality = useMemo(
     () => Math.max(...seasonalityData, 1),
