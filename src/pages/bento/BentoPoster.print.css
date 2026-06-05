@@ -16,7 +16,7 @@
 
 @media print {
   /* Fallback page — JS injects an exact-aspect rule with higher
-     specificity (via <style id="lynxee-print-page">) before printing. */
+    specificity (via <style id="bee-around-print-page">) before printing. */
   @page {
     size: A2 portrait;
     margin: 0;

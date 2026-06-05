@@ -3,7 +3,7 @@ function AboutPage() {
     <section className="about-page" aria-labelledby="about-page-title">
       <section className="about-card">
         <p className="about-kicker">About</p>
-        <h1 id="about-page-title">Lynxee</h1>
+        <h1 id="about-page-title">Bee Around</h1>
         <p>
           A compact biodiversity portrait for a place. This page is a simple
           placeholder for the project story, methods, and team.

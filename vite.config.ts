@@ -6,5 +6,5 @@ import react from '@vitejs/plugin-react'
 // Override at build time with: BASE_PATH=/your-repo/ npm run build
 export default defineConfig({
   plugins: [react()],
-  base: process.env.BASE_PATH ?? '/lynxee/',
+  base: process.env.BASE_PATH ?? '/bee-around/',
 })

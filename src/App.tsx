@@ -91,7 +91,7 @@ function App() {
             <BrandMark />
           </span>
           <span className="app-brand__text">
-            <span className="app-brand__name">Lynxee</span>
+            <span className="app-brand__name">Bee Around</span>
             <span className="app-brand__tag">Biodiversity portraits</span>
           </span>
         </button>

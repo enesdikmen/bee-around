@@ -58,7 +58,7 @@ export function printPosterToPdf(opts: PrintPosterOptions): void {
 
   // Inject (or replace) the dynamic @page rule. Using a dedicated <style>
   // node keeps it isolated from the static print CSS and easy to remove.
-  const STYLE_ID = 'lynxee-print-page'
+  const STYLE_ID = 'bee-around-print-page'
   document.getElementById(STYLE_ID)?.remove()
   const style = document.createElement('style')
   style.id = STYLE_ID
@@ -69,7 +69,7 @@ export function printPosterToPdf(opts: PrintPosterOptions): void {
   // Title becomes the default filename in Chrome's Save-as-PDF dialog.
   const prevTitle = document.title
   const filenameBase = sanitizeFilename(
-    `Lynxee — ${placeName}${seed != null ? ` (seed ${seed})` : ''}`,
+    `Bee Around — ${placeName}${seed != null ? ` (seed ${seed})` : ''}`,
   )
   document.title = filenameBase
 
