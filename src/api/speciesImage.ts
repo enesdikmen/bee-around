@@ -142,6 +142,7 @@ interface InatTaxaResponse {
   results: Array<{
     name: string
     default_photo?: {
+      id?: number
       medium_url?: string
       url?: string
       square_url?: string
@@ -176,6 +177,9 @@ const tryInat = async (
     source: 'inaturalist',
     author: photo?.attribution,
     license: photo?.license_code || undefined,
+    sourceUrl: photo?.id
+      ? `https://www.inaturalist.org/photos/${photo.id}`
+      : undefined,
   }
 }
 
@@ -195,6 +199,7 @@ const tryGbif = async (
       source: 'gbif',
       author: item?.creator || item?.rightsHolder,
       license: item?.license,
+      sourceUrl: item?.references || item?.identifier,
     }
   } catch {
     return null

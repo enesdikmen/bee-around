@@ -23,6 +23,7 @@ import type { UiLanguage, UiText } from '../i18n/uiText'
 import { seededShuffle } from '../hooks/lensData/shared'
 import { SPECIES_MINI_COUNT } from '../data/lensSelection'
 import { IMAGE_SOURCE_LABELS } from '../api/speciesImage'
+import type { ImageCredit, SpeciesCard } from '../types/lens'
 import { QRCodeSVG } from 'qrcode.react'
 // NOTE: ~36 MB JSON; bundled into the main chunk for now. When this card
 // graduates from the prototype, switch to a slimmed runtime payload or a
@@ -151,9 +152,7 @@ function toThematicTileInstance(
           className: 'bento-mini__img',
           uiText,
         })}
-        {sourceLabel(sp.imageSource) && (
-          <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
-        )}
+        {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
         <span className="bento-mini__name">{sp.commonName}</span>
         <span className="bento-mini__sci">{sp.scientificName}</span>
         {sp.popularity ? (
@@ -179,6 +178,57 @@ const fmtPct = (share: number) => {
 
 const sourceLabel = (source?: keyof typeof IMAGE_SOURCE_LABELS) =>
   source ? IMAGE_SOURCE_LABELS[source] : null
+
+const creditLabel = (
+  credit?: ImageCredit,
+  source?: keyof typeof IMAGE_SOURCE_LABELS,
+) => credit?.label ?? sourceLabel(source)
+
+const imageCreditTitle = (
+  credit?: ImageCredit,
+  source?: keyof typeof IMAGE_SOURCE_LABELS,
+) => {
+  const label = creditLabel(credit, source)
+  if (!label) return null
+  const parts = [
+    credit?.author ? `Photo: ${credit.author}` : 'Photo source',
+    credit?.license,
+    label,
+  ].filter(Boolean)
+  return parts.join(' · ')
+}
+
+const renderImageCreditBadge = (
+  credit?: ImageCredit,
+  source?: keyof typeof IMAGE_SOURCE_LABELS,
+  className = '',
+) => {
+  const label = creditLabel(credit, source)
+  if (!label) return null
+  const title = imageCreditTitle(credit, source) ?? label
+  const classes = ['bento-image-source-badge', className].filter(Boolean).join(' ')
+  const tooltip = <span className="bento-image-source-badge__tooltip">{title}</span>
+  if (credit?.sourceUrl) {
+    return (
+      <a
+        className={classes}
+        href={credit.sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={title}
+      >
+        <span>{label}</span>
+        {tooltip}
+      </a>
+    )
+  }
+  return (
+    <span className={classes} aria-label={title}>
+      <span>{label}</span>
+      {tooltip}
+    </span>
+  )
+}
 
 type SpeciesImageProps = {
   src?: string
@@ -479,10 +529,10 @@ export const CARD_DEFS: CardDef[] = [
           speciesIds: [hero.id],
           render: () => (
             <>
-              {sourceLabel(hero.imageSource) && (
-                <span className="bento-image-source-badge bento-image-source-badge--hero">
-                  {sourceLabel(hero.imageSource)}
-                </span>
+              {renderImageCreditBadge(
+                hero.imageCredit,
+                hero.imageSource,
+                'bento-image-source-badge--hero',
               )}
               {renderSpeciesImage({
                 src: hero.imageUrl,
@@ -524,9 +574,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
-            {sourceLabel(sp.imageSource) && (
-              <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
-            )}
+            {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -724,9 +772,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
-            {sourceLabel(sp.imageSource) && (
-              <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
-            )}
+            {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -787,9 +833,7 @@ export const CARD_DEFS: CardDef[] = [
                 className: 'bento-mini__img',
                 uiText,
               })}
-              {sourceLabel(sp.imageSource) && (
-                <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
-              )}
+              {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
               <span className="bento-mini__ribbon bento-mini__ribbon--signature">
                 {uiText.poster.signatureRibbon(ratioLabel)}
               </span>
@@ -958,7 +1002,7 @@ export function buildSpeciesBackupTiles(
   const seen = new Set<string>()
 
   const pushSpeciesTile = (
-    sp: { id: string; commonName: string; scientificName: string; imageUrl?: string; squareImageUrl?: string; imageSource?: keyof typeof IMAGE_SOURCE_LABELS; popularity?: number },
+    sp: Pick<SpeciesCard, 'id' | 'commonName' | 'scientificName' | 'imageUrl' | 'squareImageUrl' | 'imageSource' | 'imageCredit' | 'popularity'>,
     slotId: string,
   ) => {
     if (seen.has(sp.id)) return
@@ -978,9 +1022,7 @@ export function buildSpeciesBackupTiles(
             className: 'bento-mini__img',
             uiText,
           })}
-          {sourceLabel(sp.imageSource) && (
-            <span className="bento-image-source-badge">{sourceLabel(sp.imageSource)}</span>
-          )}
+          {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
           <span className="bento-mini__name">{sp.commonName}</span>
           <span className="bento-mini__sci">{sp.scientificName}</span>
           {sp.popularity ? (

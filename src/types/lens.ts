@@ -1,5 +1,14 @@
 import type { ImageSource } from '../api/speciesImage'
 
+export type ImageCredit = {
+  source: ImageSource
+  label: string
+  author?: string
+  license?: string
+  licenseUrl?: string
+  sourceUrl?: string
+}
+
 export type PlaceBBox = {
   minLat: number
   maxLat: number
@@ -32,6 +41,8 @@ export type SpeciesCard = {
   squareImageUrl?: string
   /** Source that provided the currently shown image. */
   imageSource?: ImageSource
+  /** Attribution metadata for the currently shown image, when the source exposes it. */
+  imageCredit?: ImageCredit
   highlight: string
   taxonLine?: string
   popularity?: number

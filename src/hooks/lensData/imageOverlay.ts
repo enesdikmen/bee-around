@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { resolveSpeciesImage, type ImageSource } from '../../api/speciesImage'
+import {
+  IMAGE_SOURCE_LABELS,
+  resolveSpeciesImage,
+  type ImageSource,
+  type SpeciesImage,
+} from '../../api/speciesImage'
 import type {
   ConservationSnapshot,
   SpeciesCard,
@@ -64,10 +69,7 @@ export const useLensImageOverlay = (
       imageSources.join(','),
     ],
     queryFn: async () => {
-      const map = new Map<
-        number,
-        { url: string; squareUrl?: string; source: ImageSource }
-      >()
+      const map = new Map<number, SpeciesImage>()
       if (imageSources.length === 0) return map
       // Single fast pass. We deliberately do NOT block here on retries —
       // doing so would freeze Regenerate behind the slowest source. Any
@@ -84,11 +86,7 @@ export const useLensImageOverlay = (
             sources: imageSources,
           })
           if (img?.url) {
-            map.set(speciesKey, {
-              url: img.url,
-              squareUrl: img.squareUrl,
-              source: img.source,
-            })
+            map.set(speciesKey, img)
           }
         }),
       )
@@ -155,6 +153,14 @@ export const useLensImageOverlay = (
         imageUrl: img.url,
         squareImageUrl: img.squareUrl,
         imageSource: img.source,
+        imageCredit: {
+          source: img.source,
+          label: IMAGE_SOURCE_LABELS[img.source],
+          author: img.author,
+          license: img.license,
+          licenseUrl: img.licenseUrl,
+          sourceUrl: img.sourceUrl,
+        },
       }
     }
   }, [imageMap])

@@ -300,6 +300,10 @@
   position: absolute;
   top: 6px;
   left: 6px;
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  max-width: calc(100% - 12px);
   font-family: var(--font-display);
   font-size: 0.54rem;
   letter-spacing: 0.06em;
@@ -310,7 +314,50 @@
   border-radius: 6px;
   padding: 0.06rem 0.34rem;
   line-height: 1.1;
+  text-decoration: none;
   z-index: 1;
+}
+
+.bento-image-source-badge:hover,
+.bento-image-source-badge:focus-visible {
+  background: rgba(0, 0, 0, 0.9);
+  outline: none;
+  z-index: 12;
+}
+
+.bento-image-source-badge:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.78);
+}
+
+.bento-image-source-badge__tooltip {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: max-content;
+  max-width: 8.75rem;
+  padding: 0.34rem 0.44rem;
+  border: 1.5px solid rgb(var(--color-ink));
+  border-radius: 6px;
+  background: rgba(255, 248, 236, 0.98);
+  color: rgb(var(--color-ink));
+  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 80ms ease, transform 80ms ease;
+}
+
+.bento-image-source-badge:hover .bento-image-source-badge__tooltip,
+.bento-image-source-badge:focus-visible .bento-image-source-badge__tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .bento-image-source-badge--hero {
@@ -318,6 +365,10 @@
   left: 10px;
   font-size: 0.58rem;
   padding: 0.12rem 0.4rem;
+}
+
+.bento-image-source-badge--hero .bento-image-source-badge__tooltip {
+  max-width: 13rem;
 }
 
 /* Missing-image placeholder used when no source resolves. */
