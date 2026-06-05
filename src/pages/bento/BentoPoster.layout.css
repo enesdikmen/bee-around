@@ -5,7 +5,7 @@
 
 .bento-shell {
   min-height: 100vh;
-  padding: clamp(1rem, 2.5vw, 2rem);
+  padding: clamp(5rem, 8vw, 6.25rem) clamp(1rem, 2.5vw, 2rem) clamp(1rem, 2.5vw, 2rem);
   background:
     radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.18) 0%, transparent 60%),
     #d9cfc2;
@@ -45,42 +45,66 @@ img[src=""] { visibility: hidden; }
 .bento-toolbar__btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 0 rgb(var(--color-ink)); }
 .bento-toolbar__btn--primary { background: rgb(var(--color-gold)); }
 
-.bento-toolbar__field {
+.bento-toolbar__menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.bento-toolbar__icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.55rem;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  appearance: none;
   border: 2px solid rgb(var(--color-ink));
   border-radius: 10px;
   background: #fff;
+  color: rgb(var(--color-ink));
   box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.bento-toolbar__field-label {
-  font-family: var(--font-display);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgb(var(--color-ink-soft));
-}
+.bento-toolbar__icon-btn:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 0 rgb(var(--color-ink)); }
+.bento-toolbar__icon-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 0 rgb(var(--color-ink)); }
 
-.bento-toolbar__select {
-  appearance: none;
-  border: 1.5px solid rgb(var(--color-ink));
-  border-radius: 7px;
+.bento-toolbar__menu-popover {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: max-content;
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.28rem;
+  border: 2px solid rgb(var(--color-ink));
+  border-radius: 12px;
   background: #fff;
-  padding: 0.2rem 1.4rem 0.2rem 0.45rem;
+  box-shadow: 4px 4px 0 0 rgb(var(--color-ink));
+}
+
+.bento-toolbar__menu-option {
+  appearance: none;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0.34rem 0.48rem;
+  text-align: left;
   font-family: var(--font-display);
   font-size: 0.7rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgb(var(--color-ink));
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.bento-toolbar__select:focus-visible {
-  outline: 2px solid rgb(var(--color-accent));
-  outline-offset: 1px;
+.bento-toolbar__menu-option:hover {
+  background: rgba(var(--color-gold), 0.14);
+}
+
+.bento-toolbar__menu-option--active {
+  background: rgb(var(--color-gold));
 }
 
 @media (max-width: 980px) {
@@ -110,12 +134,13 @@ img[src=""] { visibility: hidden; }
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   background: rgba(245, 238, 228, 0.56);
   backdrop-filter: blur(2px);
   pointer-events: none;
-  padding-top: clamp(0.7rem, 2.2vw, 1.25rem);
+  gap: 0.6rem;
 }
 .bento-grid-loading__panel {
   display: inline-flex;
@@ -132,16 +157,89 @@ img[src=""] { visibility: hidden; }
   text-transform: uppercase;
   color: rgb(var(--color-ink));
 }
-.bento-grid-loading__dot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 999px;
-  background: rgb(var(--color-accent));
-  animation: bento-loading-pulse 900ms ease-in-out infinite;
+
+/* ── Walking Lynx loader ─────────────────────────────── */
+.lynx-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
 }
-@keyframes bento-loading-pulse {
-  0%, 100% { opacity: 0.45; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1); }
+.lynx-loader__track {
+  position: relative;
+  overflow: hidden;
+}
+.lynx-loader__walker {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  will-change: transform;
+}
+.lynx-loader__svg {
+  display: block;
+  filter: drop-shadow(2px 3px 0 rgb(var(--color-ink) / 0.18));
+}
+.lynx-loader__label {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--color-ink-soft));
+}
+
+/* Walk cycle — driven by CSS so it keeps running independently of the
+   across-frame travel handled by Framer Motion. */
+.lynx-bob {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: lynx-bob 0.34s ease-in-out infinite;
+}
+.lynx-leg {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+.lynx-leg--a { animation: lynx-step-a 0.68s ease-in-out infinite; }
+.lynx-leg--b { animation: lynx-step-b 0.68s ease-in-out infinite; }
+.lynx-tail {
+  transform-box: fill-box;
+  transform-origin: right bottom;
+  animation: lynx-tail 1.1s ease-in-out infinite;
+}
+.lynx-head {
+  transform-box: fill-box;
+  transform-origin: left bottom;
+  animation: lynx-head 0.68s ease-in-out infinite;
+}
+
+@keyframes lynx-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.2px); }
+}
+@keyframes lynx-step-a {
+  0%, 100% { transform: rotate(22deg); }
+  50% { transform: rotate(-20deg); }
+}
+@keyframes lynx-step-b {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(22deg); }
+}
+@keyframes lynx-tail {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(9deg); }
+}
+@keyframes lynx-head {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(1.5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lynx-loader__walker,
+  .lynx-bob,
+  .lynx-leg,
+  .lynx-tail,
+  .lynx-head {
+    animation: none !important;
+  }
 }
 @media (max-width: 700px) {
   /* On phones, drop the strict aspect ratio — let cards grow as tall as

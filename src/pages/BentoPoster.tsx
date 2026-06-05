@@ -8,6 +8,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CitySearch from '../components/CitySearch'
+import Loader from '../components/Loader'
 import { useLensData, type LensData } from '../hooks/useLensData'
 import { packWithRetries, type BoxSpec, type Placement } from '../lib/gridPacker'
 import { printPosterToPdf } from '../lib/printPoster'
@@ -64,9 +65,15 @@ function BentoPoster({
   const [commonNameLanguage, setCommonNameLanguage] = useState<UiLanguage>(() =>
     normalizeUiLanguage(initialLanguage),
   )
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
   const uiText = getUiText(commonNameLanguage)
-  const [shareCopied, setShareCopied] = useState(false)
   const GRID_W = POSTER_GRID_W
+  const languageMenuRef = useRef<HTMLDivElement | null>(null)
+  const closeLanguageMenu = () => setIsLanguageMenuOpen(false)
+  const selectLanguage = (language: UiLanguage) => {
+    setCommonNameLanguage(language)
+    closeLanguageMenu()
+  }
 
   const placeName = selectedPlace?.label?.split(',')[0]?.trim() ?? 'Pick a place'
   const latitude = selectedPlace?.latitude
@@ -165,6 +172,29 @@ function BentoPoster({
     setRestoreSeed(refreshLocks[0].captureSeed)
   }, [commonNameLanguage, locks, pendingLocks])
 
+  useEffect(() => {
+    if (!isLanguageMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!languageMenuRef.current?.contains(event.target as Node)) {
+        closeLanguageMenu()
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeLanguageMenu()
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isLanguageMenuOpen])
+
   const displayData = data.isReady ? data : committedSnapshot?.data ?? null
   // Only show the loading overlay while waiting on the *first* ready
   // snapshot for the current place/sources. Regenerate keeps `snapshotKey`
@@ -235,17 +265,6 @@ function BentoPoster({
     pendingLocks,
     commonNameLanguage,
   ])
-
-  const handleShare = async () => {
-    if (!selectedPlace) return
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setShareCopied(true)
-      window.setTimeout(() => setShareCopied(false), 1600)
-    } catch {
-      // Clipboard blocked (e.g. insecure context) — URL is already in bar.
-    }
-  }
 
   const handleDownloadPdf = () => {
     printPosterToPdf({
@@ -618,21 +637,6 @@ function BentoPoster({
           language={commonNameLanguage}
           text={uiText.citySearch}
         />
-        <label className="bento-toolbar__field">
-          <span className="bento-toolbar__field-label">{uiText.toolbar.language}</span>
-          <select
-            className="bento-toolbar__select"
-            value={commonNameLanguage}
-            onChange={(event) => setCommonNameLanguage(normalizeUiLanguage(event.target.value))}
-            aria-label={uiText.toolbar.languageAria}
-          >
-            {UI_LANGUAGES.map((option) => (
-              <option key={option.code} value={option.code}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
         <button
           type="button"
           className="bento-toolbar__btn bento-toolbar__btn--primary"
@@ -647,20 +651,52 @@ function BentoPoster({
         <button
           type="button"
           className="bento-toolbar__btn"
-          onClick={handleShare}
-          title={uiText.toolbar.shareTitle}
-        >
-          {shareCopied ? `✓ ${uiText.toolbar.shareCopied}` : `↗ ${uiText.toolbar.share}`}
-        </button>
-        <button
-          type="button"
-          className="bento-toolbar__btn"
           onClick={handleDownloadPdf}
           disabled={isLoadingSnapshot}
           title={uiText.toolbar.pdfTitle}
         >
           ⤓ {uiText.toolbar.pdf}
         </button>
+        <div className="bento-toolbar__menu" ref={languageMenuRef}>
+          <button
+            type="button"
+            className="bento-toolbar__icon-btn"
+            title={uiText.toolbar.language}
+            aria-label={uiText.toolbar.languageAria}
+            aria-haspopup="menu"
+            aria-expanded={isLanguageMenuOpen}
+            onClick={() => setIsLanguageMenuOpen((open) => !open)}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7">
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="M3.5 12h17" />
+              <path d="M12 3.5c2.3 2.4 3.6 5.4 3.6 8.5S14.3 18.1 12 20.5" />
+              <path d="M12 3.5c-2.3 2.4-3.6 5.4-3.6 8.5S9.7 18.1 12 20.5" />
+            </svg>
+          </button>
+          {isLanguageMenuOpen && (
+            <div className="bento-toolbar__menu-popover" role="menu" aria-label={uiText.toolbar.language}>
+              {UI_LANGUAGES.map((option) => {
+                const isActive = option.code === commonNameLanguage
+                return (
+                  <button
+                    key={option.code}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={isActive}
+                    className={
+                      'bento-toolbar__menu-option' +
+                      (isActive ? ' bento-toolbar__menu-option--active' : '')
+                    }
+                    onClick={() => selectLanguage(option.code)}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={`bento-grid-wrap${isLoadingSnapshot ? ' bento-grid-wrap--loading' : ''}`}>
@@ -739,10 +775,7 @@ function BentoPoster({
         </div>
         {isLoadingSnapshot && (
           <div className="bento-grid-loading" role="status" aria-live="polite">
-            <div className="bento-grid-loading__panel">
-              <span className="bento-grid-loading__dot" aria-hidden="true" />
-              <span>{uiText.toolbar.loadingSnapshot}</span>
-            </div>
+            <Loader size={60} label={uiText.toolbar.loadingSnapshot} />
           </div>
         )}
       </div>
