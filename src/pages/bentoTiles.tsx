@@ -116,6 +116,31 @@ const THEMATIC_PRIMARY_COUNT = 2
 const THEMATIC_CARD_CLASS =
   'bento-card bento-card--mini bento-card--thematic accent-gold'
 
+const SPECIES_PATTERN_CLASS_BY_KIND = {
+  mammal: 'bento-pattern--mammal',
+  bird: 'bento-pattern--bird',
+  insect: 'bento-pattern--insect',
+  plant: 'bento-pattern--plant',
+  fungi: 'bento-pattern--fungi',
+  fish: 'bento-pattern--fish',
+} as const
+
+const speciesPatternClass = (sp: Pick<SpeciesCard, 'highlight' | 'taxonLine'>) => {
+  const text = `${sp.highlight ?? ''} ${sp.taxonLine ?? ''}`.toLowerCase()
+  const kind =
+    text.includes('fung') ? 'fungi' :
+    text.includes('bird') || text.includes('aves') ? 'bird' :
+    text.includes('insect') || text.includes('arachnid') || text.includes('arthropod') ? 'insect' :
+    text.includes('fish') || text.includes('actinopterygii') || text.includes('amphibian') ? 'fish' :
+    text.includes('plant') || text.includes('flower') || text.includes('tree') || text.includes('fern') || text.includes('plantae') ? 'plant' :
+    text.includes('mammal') || text.includes('mammalia') ? 'mammal' :
+    undefined
+
+  return kind
+    ? `bento-card--species-pattern ${SPECIES_PATTERN_CLASS_BY_KIND[kind]}`
+    : ''
+}
+
 function toThematicTileInstance(
   card: { id: string; kicker: string; species: CardBuildCtx['data']['thematicStripCards'][number]['species'] },
   index: number,
@@ -541,6 +566,7 @@ export const CARD_DEFS: CardDef[] = [
           id: 'hero',
           slotId: 'hero',
           speciesIds: [hero.id],
+          className: `bento-card bento-card--hero accent-forest ${speciesPatternClass(hero)}`,
           render: () => (
             <>
               {renderImageCreditBadge(
@@ -580,6 +606,7 @@ export const CARD_DEFS: CardDef[] = [
         id: `sp-${sp.id}`,
         slotId: `mini-${idx}`,
         speciesIds: [sp.id],
+        className: `bento-card bento-card--mini accent-paper ${speciesPatternClass(sp)}`,
         render: () => (
           <>
             {renderSpeciesImage({
