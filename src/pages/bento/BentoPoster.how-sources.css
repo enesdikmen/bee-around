@@ -285,9 +285,6 @@
   width: min(100%, 13rem);
   margin: 0;
   padding: 0.22rem 0.4rem;
-  border: 1.5px solid rgb(var(--color-ink) / 0.35);
-  border-radius: 10px;
-  background: rgb(var(--color-surface-soft));
   box-sizing: border-box;
   line-height: 0;
   text-decoration: none;
@@ -296,6 +293,14 @@
   display: block;
   width: 100%;
   height: auto;
+  /* Outline follows PNG alpha, so transparent regions stay untouched. */
+  filter:
+    drop-shadow(0 0 0.9px rgb(var(--color-surface)))
+    drop-shadow(1px 0 0 rgb(var(--color-surface)))
+    drop-shadow(-1px 0 0 rgb(var(--color-surface)))
+    drop-shadow(0 1px 0 rgb(var(--color-surface)))
+    drop-shadow(0 -1px 0 rgb(var(--color-surface)))
+    drop-shadow(0 0 0.9px rgb(var(--color-ink) / 0.42));
 }
 .bento-sources__line {
   margin: 0;

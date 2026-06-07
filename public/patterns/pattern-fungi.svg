@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="340" height="310" viewBox="110 566 340 310" aria-label="Fungi mycelium pattern figure">
-  <g transform="translate(0,1086) scale(0.1,-0.1)" fill="#163f2f" stroke="none">
+  <g transform="rotate(-18 280 721)">
+    <g transform="translate(0,1086) scale(0.1,-0.1)" fill="#0f4a35" stroke="none">
     <path d="M2807 4816 c-110 -30 -184 -117 -194 -225 -11 -119 35 -207 135 -257
     35 -18 66 -34 69 -37 9 -10 32 -218 33 -298 0 -42 -7 -116 -15 -165 -46 -259
     -123 -391 -378 -640 -176 -173 -228 -233 -297 -342 -25 -39 -48 -71 -52 -72
@@ -44,5 +45,6 @@
     17 44 3 82 -26 73 -105 107 -169 72z"/>
     <path d="M3592 2363 c-72 -35 -99 -121 -63 -196 26 -53 67 -77 134 -77 50 0
     104 30 125 70 21 41 11 134 -19 166 -48 52 -117 67 -177 37z"/>
+    </g>
   </g>
 </svg>
