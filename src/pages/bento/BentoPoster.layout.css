@@ -5,7 +5,7 @@
 
 .bento-shell {
   min-height: 100vh;
-  padding: clamp(5rem, 8vw, 6.25rem) clamp(1rem, 2.5vw, 2rem) clamp(1rem, 2.5vw, 2rem);
+  padding: 4.4rem clamp(1rem, 2.5vw, 2rem) clamp(1rem, 2.5vw, 2rem);
   background:
     radial-gradient(ellipse at 50% 0%, rgb(var(--color-overlay-light) / 0.18) 0%, transparent 60%),
     rgb(var(--color-canvas));
@@ -173,7 +173,7 @@ img[src=""] { visibility: hidden; }
 /* Columns + rows + aspect-ratio are set inline so the packer drives layout
    AND every cell stays a true square (so 1×1 looks square, 2×1 truly 2:1). */
 .bento-grid {
-  max-width: 1280px;
+  max-width: 1180px;
   margin: 0 auto;
   display: grid;
   gap: clamp(0.5rem, 1vw, 0.85rem);
