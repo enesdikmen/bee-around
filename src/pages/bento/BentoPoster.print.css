@@ -60,6 +60,7 @@
   /* Hide interactive chrome that has no place on a printed poster. */
   .bento-toolbar,
   .bento-lock-btn,
+  .bento-species-info,
   .bento-grid-loading,
   .app-header {
     display: none !important;

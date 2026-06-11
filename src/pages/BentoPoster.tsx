@@ -811,7 +811,11 @@ function BentoPoster({
               const isLocked = !!t.slotId && locks.has(t.slotId)
               const canLock = !!t.slotId && !t.className.includes('bento-card--filler')
               const tileKey = t.slotId ? `slot-${t.slotId}` : `tile-${t.id}`
-              const className = t.className + (isLocked ? ' bento-card--locked' : '')
+              const className = [
+                t.className,
+                isLocked ? 'bento-card--locked' : '',
+                p.y === 0 ? 'bento-card--top-row' : '',
+              ].filter(Boolean).join(' ')
               const style = {
                 gridColumn: `${p.x + 1} / span ${p.w}`,
                 gridRow: `${p.y + 1} / span ${p.h}`,

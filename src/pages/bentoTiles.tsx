@@ -23,7 +23,8 @@ import type { UiLanguage, UiText } from '../i18n/uiText'
 import { seededShuffle } from '../hooks/lensData/shared'
 import { SPECIES_MINI_COUNT } from '../data/lensSelection'
 import { IMAGE_SOURCE_LABELS } from '../api/speciesImage'
-import type { ImageCredit, SpeciesCard } from '../types/lens'
+import type { ImageCredit, SpeciesCard, ThreatenedSpecies } from '../types/lens'
+import type { SignatureSpeciesCard } from '../hooks/lensData/signatureSpecies'
 import { QRCodeSVG } from 'qrcode.react'
 // NOTE: ~36 MB JSON; bundled into the main chunk for now. When this card
 // graduates from the prototype, switch to a slimmed runtime payload or a
@@ -177,7 +178,7 @@ function toThematicTileInstance(
           className: 'bento-mini__img',
           uiText,
         })}
-        {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
+        {renderSpeciesInfoButton(sp, { showHighlight: true })}
         <span className="bento-mini__name">{sp.commonName}</span>
         <span className="bento-mini__sci">{sp.scientificName}</span>
         {sp.popularity ? (
@@ -223,34 +224,81 @@ const imageCreditTitle = (
   return parts.join(' · ')
 }
 
-const renderImageCreditBadge = (
-  credit?: ImageCredit,
-  source?: keyof typeof IMAGE_SOURCE_LABELS,
-  className = '',
+type SpeciesInfoCard = SpeciesCard | ThreatenedSpecies | SignatureSpeciesCard
+
+const formatRatio = (ratio: number) =>
+  ratio >= 10 ? `${Math.round(ratio)}×` : `${ratio.toFixed(1)}×`
+
+const renderSpeciesInfoButton = (
+  sp: SpeciesInfoCard,
+  {
+    className = '',
+    showHighlight = false,
+  }: {
+    className?: string
+    showHighlight?: boolean
+  } = {},
 ) => {
-  const label = creditLabel(credit, source)
-  if (!label) return null
-  const title = imageCreditTitle(credit, source) ?? label
-  const classes = ['bento-image-source-badge', className].filter(Boolean).join(' ')
-  const tooltip = <span className="bento-image-source-badge__tooltip">{title}</span>
-  if (credit?.sourceUrl) {
-    return (
-      <a
-        className={classes}
-        href={credit.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={title}
-      >
-        <span>{label}</span>
-        {tooltip}
-      </a>
-    )
-  }
+  const photoLabel = creditLabel(sp.imageCredit, sp.imageSource)
+  const photoTitle = imageCreditTitle(sp.imageCredit, sp.imageSource)
+  const iucnLabel =
+    'iucnLabel' in sp && sp.iucnLabel
+      ? `${sp.iucnLabel}${sp.iucnCategory ? ` (${sp.iucnCategory})` : ''}`
+      : null
+  const signatureRatio =
+    'overRepresentationRatio' in sp &&
+    typeof sp.overRepresentationRatio === 'number'
+      ? formatRatio(sp.overRepresentationRatio)
+      : null
+  const classes = ['bento-species-info', className].filter(Boolean).join(' ')
+
   return (
-    <span className={classes} aria-label={title}>
-      <span>{label}</span>
-      {tooltip}
+    <span
+      className={classes}
+      tabIndex={0}
+      aria-label={`${sp.commonName} details`}
+    >
+      <span className="bento-species-info__panel" role="tooltip">
+        <span className="bento-species-info__name">{sp.commonName}</span>
+        <span className="bento-species-info__sci">{sp.scientificName}</span>
+        {sp.taxonLine && (
+          <span className="bento-species-info__line">{sp.taxonLine}</span>
+        )}
+        {iucnLabel ? (
+          <span className="bento-species-info__line">IUCN: {iucnLabel}</span>
+        ) : signatureRatio ? (
+          <span className="bento-species-info__line">
+            Signature species: {signatureRatio} more represented here
+          </span>
+        ) : showHighlight && sp.highlight ? (
+          <span className="bento-species-info__line">Shown as: {sp.highlight}</span>
+        ) : null}
+        {photoLabel && (
+          <span className="bento-species-info__photo">
+            {photoTitle && sp.imageCredit?.sourceUrl ? (
+              <a
+                href={sp.imageCredit.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {photoTitle}
+              </a>
+            ) : photoTitle ? (
+              <span>{photoTitle}</span>
+            ) : sp.imageCredit?.sourceUrl ? (
+              <a
+                href={sp.imageCredit.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Photo source: {photoLabel}
+              </a>
+            ) : (
+              <span>Photo source: {photoLabel}</span>
+            )}
+          </span>
+        )}
+      </span>
     </span>
   )
 }
@@ -569,11 +617,7 @@ export const CARD_DEFS: CardDef[] = [
           className: `bento-card bento-card--hero accent-forest ${speciesPatternClass(hero)}`,
           render: () => (
             <>
-              {renderImageCreditBadge(
-                hero.imageCredit,
-                hero.imageSource,
-                'bento-image-source-badge--hero',
-              )}
+              {renderSpeciesInfoButton(hero, { className: 'bento-species-info--hero' })}
               {renderSpeciesImage({
                 src: hero.imageUrl,
                 alt: hero.commonName,
@@ -615,7 +659,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
-            {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
+            {renderSpeciesInfoButton(sp)}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -637,7 +681,9 @@ export const CARD_DEFS: CardDef[] = [
     build: ({ data, language, uiText }) =>
       data.thematicStripCards
         .slice(0, THEMATIC_PRIMARY_COUNT)
-        .map((card, index) => toThematicTileInstance(card, index, language, uiText))
+        .map((card, index) =>
+          toThematicTileInstance(card, index, language, uiText),
+        )
         .filter((x): x is NonNullable<typeof x> => x !== null),
   },
 
@@ -813,7 +859,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
-            {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
+            {renderSpeciesInfoButton(sp)}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -874,7 +920,7 @@ export const CARD_DEFS: CardDef[] = [
                 className: 'bento-mini__img',
                 uiText,
               })}
-              {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
+              {renderSpeciesInfoButton(sp)}
               <span className="bento-mini__ribbon bento-mini__ribbon--signature">
                 {uiText.poster.signatureRibbon(ratioLabel)}
               </span>
@@ -1020,7 +1066,12 @@ export function buildThematicBackupTiles(
   return data.thematicStripCards
     .slice(THEMATIC_PRIMARY_COUNT)
     .map((card, offset) =>
-      toThematicTileInstance(card, THEMATIC_PRIMARY_COUNT + offset, language, uiText),
+      toThematicTileInstance(
+        card,
+        THEMATIC_PRIMARY_COUNT + offset,
+        language,
+        uiText,
+      ),
     )
     .filter((inst): inst is NonNullable<typeof inst> => inst !== null)
     .map((inst) => ({
@@ -1055,7 +1106,7 @@ export function buildSpeciesBackupTiles(
   const seen = new Set<string>()
 
   const pushSpeciesTile = (
-    sp: Pick<SpeciesCard, 'id' | 'commonName' | 'scientificName' | 'imageUrl' | 'squareImageUrl' | 'imageSource' | 'imageCredit' | 'popularity'>,
+    sp: SpeciesInfoCard,
     slotId: string,
   ) => {
     if (seen.has(sp.id)) return
@@ -1075,7 +1126,7 @@ export function buildSpeciesBackupTiles(
             className: 'bento-mini__img',
             uiText,
           })}
-          {renderImageCreditBadge(sp.imageCredit, sp.imageSource)}
+          {renderSpeciesInfoButton(sp, { showHighlight: true })}
           <span className="bento-mini__name">{sp.commonName}</span>
           <span className="bento-mini__sci">{sp.scientificName}</span>
           {sp.popularity ? (

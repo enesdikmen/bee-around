@@ -53,11 +53,12 @@ const readViewFromLocation = (): AppView =>
 const initialShare = readShareFromLocation()
 const initialLocks = readLocksFromLocation()
 const initialLanguage = readLanguageFromLocation()
+const defaultPlaceSeed = places.find((place) => place.id === 'nairobi-ke') ?? places[0]
 const defaultPlace = canonicalizePlace({
-  ...places[0],
-  // Treat first-load Munich like a searched city so URL/state mirrors
+  ...defaultPlaceSeed,
+  // Treat first-load Nairobi like a searched city so URL/state mirrors
   // selector-driven custom-place behavior (`c.*` token path).
-  id: 'default-munich-bootstrap',
+  id: 'default-nairobi-bootstrap',
 })
 
 function App() {

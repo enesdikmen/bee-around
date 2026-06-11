@@ -24,9 +24,16 @@ export const places: Place[] = [
     id: 'nairobi-ke',
     label: 'Nairobi, KE',
     country: 'Kenya',
-    latitude: -1.292065,
-    longitude: 36.821946,
+    countryCode: 'KE',
+    latitude: -1.302398,
+    longitude: 36.8288509,
     radiusKm: 45,
+    bbox: {
+      minLat: -1.4448822,
+      maxLat: -1.1606749,
+      minLon: 36.6647016,
+      maxLon: 37.1048735,
+    },
   },
   {
     id: 'bogota-co',

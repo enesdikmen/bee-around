@@ -88,20 +88,29 @@
   text-transform: uppercase;
   letter-spacing: -0.02em;
   color: rgb(var(--color-ink));
+  -webkit-text-stroke: 0.03em rgb(var(--color-paper));
+  paint-order: stroke fill;
+  text-shadow: 0.055em 0.055em 0 rgb(var(--color-paper));
   max-width: 100%;
   text-wrap: balance;
   overflow-wrap: break-word;
   word-break: normal;
 }
 .bento-title__sub {
-  display: block;
+  display: inline-block;
+  width: fit-content;
   font-family: var(--font-display);
-  font-size: clamp(0.7rem, 1.4vw, 1rem);
-  letter-spacing: 0.14em;
+  font-size: clamp(0.58rem, 1.05vw, 0.82rem);
+  letter-spacing: 0.11em;
+  line-height: 1.15;
   text-transform: uppercase;
   color: rgb(var(--color-ink));
-  opacity: 0.78;
-  margin-top: 0.4rem;
+  background: rgb(var(--color-paper));
+  border: 1.5px solid rgb(var(--color-ink));
+  border-radius: 5px;
+  padding: 0.1rem 0.3rem;
+  box-shadow: 1.5px 1.5px 0 0 rgb(var(--color-ink));
+  margin-top: 0.32rem;
   max-width: 100%;
   text-wrap: balance;
   overflow-wrap: break-word;
@@ -340,9 +349,10 @@
   }
 
   .bento-title__sub {
-    font-size: clamp(0.58rem, 1.75vw, 0.78rem);
-    letter-spacing: 0.1em;
-    margin-top: 0.24rem;
+    font-size: clamp(0.5rem, 1.35vw, 0.66rem);
+    letter-spacing: 0.08em;
+    margin-top: 0.2rem;
+    padding: 0.08rem 0.24rem;
   }
 
   .bento-hero__body {
@@ -392,94 +402,118 @@
   }
 
   .bento-mini__badge,
-  .bento-mini__ribbon,
-  .bento-image-source-badge {
+  .bento-mini__ribbon {
     font-size: 0.48rem;
     border-width: 1px;
     border-radius: 5px;
   }
-
-  .bento-image-source-badge {
-    top: 5px;
-    left: 5px;
-    padding: 0.05rem 0.28rem;
-  }
 }
 
-/* Image source badge shown on species cards (Wikidata / iNaturalist / GBIF). */
-.bento-image-source-badge {
+/* Species info hover/focus control. Replaces the old visible image-source
+   badge while keeping the same photo source + credit text inside the panel. */
+.bento-card:has(.bento-species-info):hover,
+.bento-card:has(.bento-species-info:focus-visible),
+.bento-card:has(.bento-species-info:focus-within) {
+  overflow: visible;
+  z-index: 20;
+}
+
+.bento-species-info {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  display: inline-flex;
-  align-items: center;
-  width: max-content;
-  max-width: calc(100% - 12px);
-  font-family: var(--font-display);
-  font-size: 0.54rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  background: rgb(var(--color-overlay-dark) / 0.78);
-  color: rgb(var(--color-on-dark));
-  border: 1.5px solid rgb(var(--color-ink));
-  border-radius: 6px;
-  padding: 0.06rem 0.34rem;
-  line-height: 1.1;
-  text-decoration: none;
+  inset: 0;
   z-index: 1;
-}
-
-.bento-image-source-badge:hover,
-.bento-image-source-badge:focus-visible {
-  background: rgb(var(--color-overlay-dark) / 0.9);
   outline: none;
-  z-index: 12;
+  pointer-events: none;
 }
 
-.bento-image-source-badge:focus-visible {
-  box-shadow: 0 0 0 2px rgb(var(--color-overlay-light) / 0.78);
-}
-
-.bento-image-source-badge__tooltip {
+.bento-species-info__panel {
   position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
+  top: auto;
+  bottom: calc(100% + 0.42rem);
+  left: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.26rem;
   width: max-content;
-  max-width: 8.75rem;
-  padding: 0.34rem 0.44rem;
-  border: 1.5px solid rgb(var(--color-ink));
-  border-radius: 6px;
+  min-width: 10.75rem;
+  max-width: min(16.5rem, 78vw);
+  padding: 0.66rem 0.72rem 0.7rem;
+  border: 2px solid rgb(var(--color-ink));
+  border-radius: 8px;
   background: rgb(var(--color-surface-soft) / 0.98);
   color: rgb(var(--color-ink));
-  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
+  box-shadow: 3px 3px 0 0 rgb(var(--color-ink));
   font-family: var(--font-sans);
-  font-size: 0.62rem;
-  font-weight: 700;
+  font-size: 0.66rem;
   letter-spacing: 0;
-  line-height: 1.2;
+  line-height: 1.32;
   text-transform: none;
   white-space: normal;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   transition: opacity 80ms ease, transform 80ms ease;
 }
 
-.bento-image-source-badge:hover .bento-image-source-badge__tooltip,
-.bento-image-source-badge:focus-visible .bento-image-source-badge__tooltip {
+.bento-card--top-row .bento-species-info__panel {
+  top: calc(100% + 0.42rem);
+  bottom: auto;
+  transform: translateY(3px);
+}
+
+.bento-card:has(.bento-species-info):hover .bento-species-info__panel,
+.bento-species-info:hover .bento-species-info__panel,
+.bento-species-info:focus-visible .bento-species-info__panel,
+.bento-species-info:focus-within .bento-species-info__panel {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
-.bento-image-source-badge--hero {
-  top: 10px;
-  left: 10px;
-  font-size: 0.58rem;
-  padding: 0.12rem 0.4rem;
+.bento-species-info--hero {
+  inset: 0;
 }
 
-.bento-image-source-badge--hero .bento-image-source-badge__tooltip {
-  max-width: 13rem;
+.bento-species-info--hero .bento-species-info__panel {
+  left: 10px;
+  max-width: 18rem;
+}
+
+.bento-species-info__name {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  line-height: 1.05;
+  color: rgb(var(--color-ink));
+}
+
+.bento-species-info__sci {
+  font-style: italic;
+  color: rgb(var(--color-ink-soft));
+}
+
+.bento-species-info__line {
+  font-weight: 700;
+  color: rgb(var(--color-ink));
+}
+
+.bento-species-info__photo {
+  margin-top: 0.18rem;
+  padding-top: 0.36rem;
+  border-top: 1px solid rgb(var(--color-ink) / 0.16);
+  color: rgb(var(--color-ink-soft));
+  font-size: 0.58rem;
+  line-height: 1.22;
+}
+
+.bento-species-info__photo a {
+  color: rgb(var(--color-ink));
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.bento-species-info__photo a:hover,
+.bento-species-info__photo a:focus-visible {
+  text-decoration: underline;
 }
 
 /* Missing-image placeholder used when no source resolves. */
