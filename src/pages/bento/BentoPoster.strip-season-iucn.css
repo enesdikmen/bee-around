@@ -202,7 +202,7 @@
 .bento-evidence__row {
   display: grid;
   grid-template-columns: auto auto 1fr;
-  align-items: baseline;
+  align-items: start;
   column-gap: 0.38rem;
 }
 .bento-evidence__dot {
@@ -210,7 +210,7 @@
   height: 0.6rem;
   border-radius: 50%;
   border: 1.5px solid rgb(var(--color-ink));
-  align-self: center;
+  margin-top: 0.13rem;
 }
 .bento-evidence__row--primary .bento-evidence__dot { background: rgb(var(--color-ink)); }
 .bento-evidence__row--secondary .bento-evidence__dot { background: rgb(var(--color-accent)); }
