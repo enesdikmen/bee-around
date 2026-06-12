@@ -58,6 +58,15 @@
     linear-gradient(135deg, rgb(var(--color-surface)) 0 72%, rgb(var(--color-acid-sage)) 72% 100%);
 }
 
+.theme-acidgarden .bento-card--hero.bento-card--species-pattern .bento-hero__body {
+  background-image:
+    linear-gradient(rgb(var(--color-surface) / 0.82), rgb(var(--color-surface) / 0.82)),
+    var(--species-pattern),
+    linear-gradient(135deg, rgb(var(--color-surface)) 0 72%, rgb(var(--color-acid-sage)) 72% 100%);
+  background-repeat: repeat, repeat, no-repeat;
+  background-size: auto, 62px 62px, auto;
+}
+
 .theme-acidgarden .bento-card--signature.accent-forest {
   background: rgb(var(--color-dark));
 }
@@ -91,30 +100,37 @@
 }
 
 .theme-acidgarden .bento-card--thematic.accent-gold {
+  --species-pattern-bg: var(--color-acid-marigold);
   background: rgb(var(--color-acid-marigold));
 }
 
 .theme-acidgarden .bento-card--thematic.accent-forest {
+  --species-pattern-bg: var(--color-acid-leaf);
   background: rgb(var(--color-acid-leaf));
 }
 
 .theme-acidgarden .bento-grid > .bento-card--mini.accent-paper:nth-child(5n + 1) {
+  --species-pattern-bg: var(--color-acid-sage);
   background: rgb(var(--color-acid-sage));
 }
 
 .theme-acidgarden .bento-grid > .bento-card--mini.accent-paper:nth-child(5n + 2) {
+  --species-pattern-bg: var(--color-acid-butter);
   background: rgb(var(--color-acid-butter));
 }
 
 .theme-acidgarden .bento-grid > .bento-card--mini.accent-paper:nth-child(5n + 3) {
+  --species-pattern-bg: var(--color-acid-lilac);
   background: rgb(var(--color-acid-lilac));
 }
 
 .theme-acidgarden .bento-grid > .bento-card--mini.accent-paper:nth-child(5n + 4) {
+  --species-pattern-bg: var(--color-surface);
   background: rgb(var(--color-surface));
 }
 
 .theme-acidgarden .bento-grid > .bento-card--mini.accent-paper:nth-child(5n) {
+  --species-pattern-bg: var(--color-surface-soft-alt-2);
   background: rgb(var(--color-surface-soft-alt-2));
 }
 
@@ -123,6 +139,19 @@
     rgb(var(--color-overlay-light) / 0.84),
     rgb(var(--color-overlay-light) / 0.84)
   );
+}
+
+.theme-acidgarden .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern {
+  background-color: rgb(var(--species-pattern-bg, var(--color-surface-soft)));
+  background-image:
+    linear-gradient(
+      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88),
+      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88)
+    ),
+    var(--species-pattern);
+  background-position: 0 0, 8px 100%;
+  background-repeat: repeat;
+  background-size: auto, var(--species-pattern-size);
 }
 
 .theme-acidgarden .bento-card--filler {

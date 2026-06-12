@@ -36,6 +36,15 @@
   background: rgb(var(--color-prism-blue));
 }
 
+.theme-prism .bento-card--hero.bento-card--species-pattern .bento-hero__body {
+  background-color: rgb(var(--color-prism-blue));
+  background-image:
+    linear-gradient(rgb(var(--color-prism-blue) / 0.88), rgb(var(--color-prism-blue) / 0.88)),
+    var(--species-pattern);
+  background-repeat: repeat;
+  background-size: auto, 62px 62px;
+}
+
 .theme-prism .bento-card--signature .bento-mini__name,
 .theme-prism .bento-card--signature .bento-mini__sci,
 .theme-prism .bento-card--signature .bento-mini__count {
@@ -60,34 +69,53 @@
 }
 
 .theme-prism .bento-card--thematic.accent-gold {
+  --species-pattern-bg: var(--color-prism-orange);
   background: rgb(var(--color-prism-orange));
 }
 
 .theme-prism .bento-card--thematic.accent-forest {
+  --species-pattern-bg: var(--color-prism-mint);
   background: rgb(var(--color-prism-mint));
 }
 
 .theme-prism .bento-grid > .bento-card--mini.accent-paper:nth-child(4n + 1) {
+  --species-pattern-bg: var(--color-prism-mint);
   background: rgb(var(--color-prism-mint));
 }
 
 .theme-prism .bento-grid > .bento-card--mini.accent-paper:nth-child(4n + 2) {
+  --species-pattern-bg: var(--color-prism-blush);
   background: rgb(var(--color-prism-blush));
 }
 
 .theme-prism .bento-grid > .bento-card--mini.accent-paper:nth-child(4n + 3) {
+  --species-pattern-bg: var(--color-prism-lavender);
   background: rgb(var(--color-prism-lavender));
 }
 
 .theme-prism .bento-grid > .bento-card--mini.accent-paper:nth-child(4n) {
+  --species-pattern-bg: var(--color-paper);
   background: rgb(var(--color-paper));
 }
 
 .theme-prism .bento-card--species-pattern {
   --species-pattern-wash: linear-gradient(
-    rgb(var(--color-overlay-light) / 0.86),
-    rgb(var(--color-overlay-light) / 0.86)
+    rgb(var(--color-overlay-light) / 0.18),
+    rgb(var(--color-overlay-light) / 0.18)
   );
+}
+
+.theme-prism .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern {
+  background-color: rgb(var(--species-pattern-bg, var(--color-surface-soft)));
+  background-image:
+    linear-gradient(
+      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88),
+      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88)
+    ),
+    var(--species-pattern);
+  background-position: 0 0, 8px 100%;
+  background-repeat: repeat;
+  background-size: auto, var(--species-pattern-size);
 }
 
 .theme-prism .bento-card--filler {

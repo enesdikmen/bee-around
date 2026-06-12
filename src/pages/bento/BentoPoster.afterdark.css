@@ -52,6 +52,15 @@
   background: rgb(var(--color-afterdark-cyan));
 }
 
+.theme-afterdark .bento-card--hero.bento-card--species-pattern .bento-hero__body {
+  background-color: rgb(var(--color-afterdark-cyan));
+  background-image:
+    linear-gradient(rgb(var(--color-afterdark-cyan) / 0.88), rgb(var(--color-afterdark-cyan) / 0.88)),
+    var(--species-pattern);
+  background-repeat: repeat;
+  background-size: auto, 62px 62px;
+}
+
 .theme-afterdark .bento-card--signature.accent-forest {
   background: rgb(var(--color-dark));
 }
@@ -85,34 +94,53 @@
 }
 
 .theme-afterdark .bento-card--thematic.accent-gold {
+  --species-pattern-bg: var(--color-afterdark-cyan);
   background: rgb(var(--color-afterdark-cyan));
 }
 
 .theme-afterdark .bento-card--thematic.accent-forest {
+  --species-pattern-bg: var(--color-afterdark-lime);
   background: rgb(var(--color-afterdark-lime));
 }
 
 .theme-afterdark .bento-grid > .bento-card--mini.accent-paper:nth-child(4n + 1) {
+  --species-pattern-bg: var(--color-afterdark-mint);
   background: rgb(var(--color-afterdark-mint));
 }
 
 .theme-afterdark .bento-grid > .bento-card--mini.accent-paper:nth-child(4n + 2) {
+  --species-pattern-bg: var(--color-afterdark-peach);
   background: rgb(var(--color-afterdark-peach));
 }
 
 .theme-afterdark .bento-grid > .bento-card--mini.accent-paper:nth-child(4n + 3) {
+  --species-pattern-bg: var(--color-afterdark-lilac);
   background: rgb(var(--color-afterdark-lilac));
 }
 
 .theme-afterdark .bento-grid > .bento-card--mini.accent-paper:nth-child(4n) {
+  --species-pattern-bg: var(--color-surface);
   background: rgb(var(--color-surface));
 }
 
 .theme-afterdark .bento-card--species-pattern {
   --species-pattern-wash: linear-gradient(
-    rgb(var(--color-overlay-light) / 0.84),
-    rgb(var(--color-overlay-light) / 0.84)
+    rgb(var(--color-overlay-light) / 0.18),
+    rgb(var(--color-overlay-light) / 0.18)
   );
+}
+
+.theme-afterdark .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern {
+  background-color: rgb(var(--species-pattern-bg, var(--color-surface-soft)));
+  background-image:
+    linear-gradient(
+      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88),
+      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88)
+    ),
+    var(--species-pattern);
+  background-position: 0 0, 8px 100%;
+  background-repeat: repeat;
+  background-size: auto, var(--species-pattern-size);
 }
 
 .theme-afterdark .bento-card--filler {
