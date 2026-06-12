@@ -141,7 +141,7 @@
   );
 }
 
-.theme-acidgarden .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern {
+.theme-acidgarden .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern:not(.bento-card--thematic):not(.bento-card--at-risk):not(.bento-card--signature) {
   background-color: rgb(var(--species-pattern-bg, var(--color-surface-soft)));
   background-image:
     linear-gradient(

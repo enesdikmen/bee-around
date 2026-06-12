@@ -179,7 +179,7 @@ function toThematicTileInstance(
     speciesIds: [sp.id],
     className:
       'bento-card bento-card--mini bento-card--thematic ' +
-      `${index % 2 === 0 ? 'accent-gold' : 'accent-forest'} ${speciesPatternClass(sp)}`,
+      `${index % 2 === 0 ? 'accent-gold' : 'accent-forest'}`,
     render: () => (
       <>
         {renderSpeciesImage({
@@ -663,7 +663,7 @@ export const CARD_DEFS: CardDef[] = [
                 {hero.taxonLine && <span className="bento-hero__taxon">{hero.taxonLine}</span>}
                 {hero.popularity ? (
                   <span className="bento-hero__count">
-                    {uiText.poster.observations(hero.popularity.toLocaleString(language))}
+                    {hero.popularity.toLocaleString(language)}
                   </span>
                 ) : null}
               </div>
@@ -884,7 +884,7 @@ export const CARD_DEFS: CardDef[] = [
         id: `at-risk-${i}`,
         slotId: `at-risk-${i}`,
         speciesIds: [sp.id],
-        className: `bento-card bento-card--mini bento-card--at-risk accent-paper ${speciesPatternClass(sp)}`,
+        className: 'bento-card bento-card--mini bento-card--at-risk accent-paper',
         render: () => (
           <>
             {renderSpeciesImage({
@@ -946,7 +946,7 @@ export const CARD_DEFS: CardDef[] = [
           id: 'signature-species',
           slotId: 'signature-species',
           speciesIds: [sp.id],
-          className: `bento-card bento-card--mini bento-card--signature accent-forest ${speciesPatternClass(sp)}`,
+          className: 'bento-card bento-card--mini bento-card--signature accent-forest',
           render: () => (
             <>
               {renderSpeciesImage({

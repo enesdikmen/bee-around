@@ -18,7 +18,9 @@
   :root {
     --print-card-border: 1.35mm;
     --print-detail-border: 0.8mm;
-    --print-shadow: 2.2mm 2.2mm 0 0 rgb(var(--color-ink));
+    --print-grid-gap: 4.2mm;
+    --print-grid-padding: 8mm;
+    --print-shadow: 1.8mm 1.8mm 0 0 rgb(var(--color-ink));
   }
 
   /* Fallback page — JS injects an exact-aspect rule with higher
@@ -33,6 +35,7 @@
   html,
   body,
   .bento-shell,
+  .bento-shell::before,
   .bento-card,
   .bento-grid-wrap,
   .bento-grid {
@@ -55,6 +58,15 @@
     padding: 0 !important;
     height: 100% !important;
     overflow: hidden !important;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgb(var(--color-overlay-light) / 0.2) 0%, transparent 62%),
+      rgb(var(--color-canvas)) !important;
+  }
+
+  .bento-shell::before {
+    position: fixed !important;
+    inset: -18mm !important;
+    opacity: var(--hex-field-opacity) !important;
   }
 
   /* Hide interactive chrome that has no place on a printed poster. */
@@ -83,14 +95,16 @@
   .bento-grid {
     max-width: none !important;
     width: 100% !important;
-    height: auto !important;
+    height: 100% !important;
     margin: 0 !important;
     /* Keep the on-screen gap proportions; absolute units are more
        predictable than clamp(vw) at print resolution. */
-    gap: 4.5mm !important;
-    padding: 5mm !important;
+    gap: var(--print-grid-gap) !important;
+    padding: var(--print-grid-padding) !important;
     box-sizing: border-box !important;
     overflow: visible !important;
+    align-items: stretch !important;
+    justify-items: stretch !important;
   }
 
   /* Framer Motion sets inline transforms/opacity. On a settled poster
@@ -161,44 +175,50 @@
   }
 
   .bento-title__place {
-    font-size: 4.2rem !important;
+    font-size: 4.65rem !important;
+    -webkit-text-stroke-width: 0.035em !important;
+    text-shadow: 0.065em 0.065em 0 rgb(var(--color-paper)) !important;
   }
 
   .bento-title__sub,
   .bento-card__kicker {
-    font-size: 1rem !important;
+    font-size: 1.12rem !important;
   }
 
   .bento-hero__name {
-    font-size: 2.45rem !important;
+    font-size: 2.78rem !important;
+  }
+
+  .bento-hero__sci {
+    font-size: 1.12rem !important;
   }
 
   .bento-hero__taxon,
   .bento-hero__count,
   .bento-card__sub {
-    font-size: 1.05rem !important;
+    font-size: 1.18rem !important;
   }
 
   .bento-mini__name {
-    font-size: 1.24rem !important;
+    font-size: 1.38rem !important;
     line-height: 1.05 !important;
   }
 
   .bento-mini__sci,
   .bento-mini__count,
   .bento-mini__status {
-    font-size: 0.86rem !important;
+    font-size: 0.98rem !important;
     line-height: 1.1 !important;
   }
 
   .bento-sightings__num {
-    font-size: 3.25rem !important;
+    font-size: 3.62rem !important;
   }
 
   .bento-sightings__pct,
   .bento-sightings__iucn-count,
   .bento-sightings__rank-pct {
-    font-size: 1.5rem !important;
+    font-size: 1.68rem !important;
   }
 
   .bento-sightings__label,
@@ -206,7 +226,7 @@
   .bento-sightings__iucn-pill,
   .bento-sightings__rank-label,
   .bento-sightings__ranks-head {
-    font-size: 1.12rem !important;
+    font-size: 1.22rem !important;
   }
 
   .bento-strip__name,
@@ -217,19 +237,19 @@
   .bento-how__label,
   .bento-sources__line,
   .bento-source-logo__caption {
-    font-size: 0.86rem !important;
+    font-size: 0.96rem !important;
   }
 
   .bento-how__pct,
   .bento-evidence__pct {
-    font-size: 1.12rem !important;
+    font-size: 1.24rem !important;
   }
 
   .bento-mini__badge,
   .bento-mini__ribbon,
   .bento-image-source-badge,
   .bento-strip__badge {
-    font-size: 0.78rem !important;
+    font-size: 0.88rem !important;
     border-radius: 1.6mm !important;
   }
 
