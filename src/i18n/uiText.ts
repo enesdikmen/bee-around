@@ -55,6 +55,18 @@ export type UiText = {
     observations: (count: string) => string
     imageUnavailable: string
     imageUnavailableAria: (alt: string) => string
+    speciesDetailsAria: (name: string) => string
+    iucnTooltip: (label: string) => string
+    signatureTooltip: (ratio: string) => string
+    taxonLink: string
+    photoBy: (author: string) => string
+    photoSource: string
+    photoSourceLabel: (label: string) => string
+    thematicInfo: {
+      inSeason: string
+      smallWonders: string
+      nightCreatures: string
+    }
     seasonality: string
     recordsSince: (year: number) => string
     monthlyObservations: string
@@ -130,6 +142,18 @@ const englishText: UiText = {
     observations: (count) => `${count} observations`,
     imageUnavailable: 'Image unavailable',
     imageUnavailableAria: (alt) => `${alt} image unavailable`,
+    speciesDetailsAria: (name) => `${name} details`,
+    iucnTooltip: (label) => `IUCN: ${label}`,
+    signatureTooltip: (ratio) => `Signature species: ${ratio} more represented here`,
+    taxonLink: 'View taxon on GBIF',
+    photoBy: (author) => `Photo: ${author}`,
+    photoSource: 'Photo source',
+    photoSourceLabel: (label) => `Photo source: ${label}`,
+    thematicInfo: {
+      inSeason: 'Picked for this month',
+      smallWonders: 'Picked from tiny taxa',
+      nightCreatures: 'Picked from nocturnal taxa',
+    },
     seasonality: 'Seasonality',
     recordsSince: (year) => `Records since ${year}`,
     monthlyObservations: 'Monthly observations',
@@ -202,6 +226,18 @@ const frenchText: UiText = {
     observations: (count) => `${count} observations`,
     imageUnavailable: 'Image indisponible',
     imageUnavailableAria: (alt) => `Image indisponible pour ${alt}`,
+    speciesDetailsAria: (name) => `Details de ${name}`,
+    iucnTooltip: (label) => `IUCN : ${label}`,
+    signatureTooltip: (ratio) => `Espece signature : ${ratio} plus representee ici`,
+    taxonLink: 'Voir le taxon sur GBIF',
+    photoBy: (author) => `Photo : ${author}`,
+    photoSource: 'Source de la photo',
+    photoSourceLabel: (label) => `Source de la photo : ${label}`,
+    thematicInfo: {
+      inSeason: 'Choisie pour ce mois',
+      smallWonders: 'Choisie parmi les petits taxons',
+      nightCreatures: 'Choisie parmi les taxons nocturnes',
+    },
     seasonality: 'Saisonnalite',
     recordsSince: (year) => `Donnees depuis ${year}`,
     monthlyObservations: 'Observations mensuelles',
@@ -274,6 +310,18 @@ const spanishText: UiText = {
     observations: (count) => `${count} observaciones`,
     imageUnavailable: 'Imagen no disponible',
     imageUnavailableAria: (alt) => `Imagen de ${alt} no disponible`,
+    speciesDetailsAria: (name) => `Detalles de ${name}`,
+    iucnTooltip: (label) => `IUCN: ${label}`,
+    signatureTooltip: (ratio) => `Especie distintiva: ${ratio} mas representada aqui`,
+    taxonLink: 'Ver taxon en GBIF',
+    photoBy: (author) => `Foto: ${author}`,
+    photoSource: 'Fuente de la foto',
+    photoSourceLabel: (label) => `Fuente de la foto: ${label}`,
+    thematicInfo: {
+      inSeason: 'Elegida para este mes',
+      smallWonders: 'Elegida entre taxones pequenos',
+      nightCreatures: 'Elegida entre taxones nocturnos',
+    },
     seasonality: 'Estacionalidad',
     recordsSince: (year) => `Registros desde ${year}`,
     monthlyObservations: 'Observaciones mensuales',
@@ -346,6 +394,18 @@ const turkishText: UiText = {
     observations: (count) => `${count} gozlem`,
     imageUnavailable: 'Gorsel yok',
     imageUnavailableAria: (alt) => `${alt} gorseli yok`,
+    speciesDetailsAria: (name) => `${name} ayrintilari`,
+    iucnTooltip: (label) => `IUCN: ${label}`,
+    signatureTooltip: (ratio) => `Imza tur: burada ${ratio} daha fazla temsil ediliyor`,
+    taxonLink: "Taksonu GBIF'te gor",
+    photoBy: (author) => `Fotograf: ${author}`,
+    photoSource: 'Fotograf kaynagi',
+    photoSourceLabel: (label) => `Fotograf kaynagi: ${label}`,
+    thematicInfo: {
+      inSeason: 'Bu ay icin secildi',
+      smallWonders: 'Kucuk taksonlardan secildi',
+      nightCreatures: 'Gececil taksonlardan secildi',
+    },
     seasonality: 'Mevsimsellik',
     recordsSince: (year) => `${year} yilindan beri kayitlar`,
     monthlyObservations: 'Aylik gozlemler',
@@ -418,6 +478,18 @@ const germanText: UiText = {
     observations: (count) => `${count} Beobachtungen`,
     imageUnavailable: 'Bild nicht verfugbar',
     imageUnavailableAria: (alt) => `${alt}: Bild nicht verfugbar`,
+    speciesDetailsAria: (name) => `Details zu ${name}`,
+    iucnTooltip: (label) => `IUCN: ${label}`,
+    signatureTooltip: (ratio) => `Signaturart: hier ${ratio} starker vertreten`,
+    taxonLink: 'Taxon auf GBIF ansehen',
+    photoBy: (author) => `Foto: ${author}`,
+    photoSource: 'Fotoquelle',
+    photoSourceLabel: (label) => `Fotoquelle: ${label}`,
+    thematicInfo: {
+      inSeason: 'Fur diesen Monat ausgewahlt',
+      smallWonders: 'Aus kleinen Taxa ausgewahlt',
+      nightCreatures: 'Aus nachtaktiven Taxa ausgewahlt',
+    },
     seasonality: 'Saisonalitat',
     recordsSince: (year) => `Nachweise seit ${year}`,
     monthlyObservations: 'Monatliche Beobachtungen',
@@ -490,6 +562,18 @@ const italianText: UiText = {
     observations: (count) => `${count} osservazioni`,
     imageUnavailable: 'Immagine non disponibile',
     imageUnavailableAria: (alt) => `Immagine di ${alt} non disponibile`,
+    speciesDetailsAria: (name) => `Dettagli di ${name}`,
+    iucnTooltip: (label) => `IUCN: ${label}`,
+    signatureTooltip: (ratio) => `Specie distintiva: ${ratio} piu rappresentata qui`,
+    taxonLink: 'Vedi taxon su GBIF',
+    photoBy: (author) => `Foto: ${author}`,
+    photoSource: 'Fonte foto',
+    photoSourceLabel: (label) => `Fonte foto: ${label}`,
+    thematicInfo: {
+      inSeason: 'Scelta per questo mese',
+      smallWonders: 'Scelta tra piccoli taxon',
+      nightCreatures: 'Scelta tra taxon notturni',
+    },
     seasonality: 'Stagionalita',
     recordsSince: (year) => `Dati dal ${year}`,
     monthlyObservations: 'Osservazioni mensili',
@@ -562,6 +646,18 @@ const portugueseText: UiText = {
     observations: (count) => `${count} observacoes`,
     imageUnavailable: 'Imagem indisponivel',
     imageUnavailableAria: (alt) => `Imagem de ${alt} indisponivel`,
+    speciesDetailsAria: (name) => `Detalhes de ${name}`,
+    iucnTooltip: (label) => `IUCN: ${label}`,
+    signatureTooltip: (ratio) => `Especie assinatura: ${ratio} mais representada aqui`,
+    taxonLink: 'Ver taxon no GBIF',
+    photoBy: (author) => `Foto: ${author}`,
+    photoSource: 'Fonte da foto',
+    photoSourceLabel: (label) => `Fonte da foto: ${label}`,
+    thematicInfo: {
+      inSeason: 'Escolhida para este mes',
+      smallWonders: 'Escolhida entre taxons pequenos',
+      nightCreatures: 'Escolhida entre taxons noturnos',
+    },
     seasonality: 'Sazonalidade',
     recordsSince: (year) => `Registros desde ${year}`,
     monthlyObservations: 'Observacoes mensais',

@@ -83,18 +83,19 @@
 .bento-title__place {
   display: block;
   font-family: var(--font-display);
-  font-size: clamp(1.2rem, 4.25vw, 3.15rem);
+  font-size: var(--title-fit-font-size, clamp(1.2rem, 4.25vw, 3.15rem));
   line-height: 0.88;
   text-transform: uppercase;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: rgb(var(--color-ink));
   -webkit-text-stroke: 0.03em rgb(var(--color-paper));
   paint-order: stroke fill;
   text-shadow: 0.055em 0.055em 0 rgb(var(--color-paper));
   max-width: 100%;
-  text-wrap: balance;
-  overflow-wrap: break-word;
-  word-break: normal;
+  overflow: visible;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 .bento-title__sub {
   display: inline-block;

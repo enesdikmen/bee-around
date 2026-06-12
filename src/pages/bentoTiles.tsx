@@ -23,6 +23,7 @@ import type { UiLanguage, UiText } from '../i18n/uiText'
 import { seededShuffle } from '../hooks/lensData/shared'
 import { SPECIES_MINI_COUNT } from '../data/lensSelection'
 import { IMAGE_SOURCE_LABELS } from '../api/speciesImage'
+import TitlePlaceName from './bento/TitlePlaceName'
 import type {
   ImageCredit,
   SpeciesCard,
@@ -188,7 +189,7 @@ function toThematicTileInstance(
           className: 'bento-mini__img',
           uiText,
         })}
-        {renderSpeciesInfoButton(sp, { contextLine: thematicInfoLine(card.id) })}
+        {renderSpeciesInfoButton(sp, { uiText, contextLine: thematicInfoLine(card.id, uiText) })}
         <span className="bento-mini__name">{sp.commonName}</span>
         <span className="bento-mini__sci">{sp.scientificName}</span>
         {sp.popularity ? (
@@ -221,13 +222,14 @@ const creditLabel = (
 ) => credit?.label ?? sourceLabel(source)
 
 const imageCreditTitle = (
+  uiText: UiText,
   credit?: ImageCredit,
   source?: keyof typeof IMAGE_SOURCE_LABELS,
 ) => {
   const label = creditLabel(credit, source)
   if (!label) return null
   const parts = [
-    credit?.author ? `Photo: ${credit.author}` : 'Photo source',
+    credit?.author ? uiText.poster.photoBy(credit.author) : uiText.poster.photoSource,
     credit?.license,
     label,
   ].filter(Boolean)
@@ -239,29 +241,31 @@ type SpeciesInfoCard = SpeciesCard | ThreatenedSpecies | SignatureSpeciesCard
 const formatRatio = (ratio: number) =>
   ratio >= 10 ? `${Math.round(ratio)}×` : `${ratio.toFixed(1)}×`
 
-const thematicInfoLine = (id: ThematicStripCard['id']) => {
+const thematicInfoLine = (id: ThematicStripCard['id'], uiText: UiText) => {
   switch (id) {
     case 'inSeason':
-      return 'Picked for this month'
+      return uiText.poster.thematicInfo.inSeason
     case 'smallWonders':
-      return 'Picked from tiny taxa'
+      return uiText.poster.thematicInfo.smallWonders
     case 'nightCreatures':
-      return 'Picked from nocturnal taxa'
+      return uiText.poster.thematicInfo.nightCreatures
   }
 }
 
 const renderSpeciesInfoButton = (
   sp: SpeciesInfoCard,
   {
+    uiText,
     className = '',
     contextLine,
   }: {
+    uiText: UiText
     className?: string
     contextLine?: string
-  } = {},
+  },
 ) => {
   const photoLabel = creditLabel(sp.imageCredit, sp.imageSource)
-  const photoTitle = imageCreditTitle(sp.imageCredit, sp.imageSource)
+  const photoTitle = imageCreditTitle(uiText, sp.imageCredit, sp.imageSource)
   const iucnLabel =
     'iucnLabel' in sp && sp.iucnLabel
       ? `${sp.iucnLabel}${sp.iucnCategory ? ` (${sp.iucnCategory})` : ''}`
@@ -277,7 +281,7 @@ const renderSpeciesInfoButton = (
     <span
       className={classes}
       tabIndex={0}
-      aria-label={`${sp.commonName} details`}
+      aria-label={uiText.poster.speciesDetailsAria(sp.commonName)}
     >
       <span className="bento-species-info__panel" role="tooltip">
         <span className="bento-species-info__name">{sp.commonName}</span>
@@ -286,10 +290,10 @@ const renderSpeciesInfoButton = (
           <span className="bento-species-info__line">{sp.taxonLine}</span>
         )}
         {iucnLabel ? (
-          <span className="bento-species-info__line">IUCN: {iucnLabel}</span>
+          <span className="bento-species-info__line">{uiText.poster.iucnTooltip(iucnLabel)}</span>
         ) : signatureRatio ? (
           <span className="bento-species-info__line">
-            Signature species: {signatureRatio} more represented here
+            {uiText.poster.signatureTooltip(signatureRatio)}
           </span>
         ) : contextLine ? (
           <span className="bento-species-info__line">{contextLine}</span>
@@ -301,7 +305,7 @@ const renderSpeciesInfoButton = (
           rel="noopener noreferrer"
           onClick={(event) => event.currentTarget.blur()}
         >
-          View taxon on GBIF
+          {uiText.poster.taxonLink}
           <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
         </a>
         {photoLabel && (
@@ -325,11 +329,11 @@ const renderSpeciesInfoButton = (
                 rel="noopener noreferrer"
                 onClick={(event) => event.currentTarget.blur()}
               >
-                Photo source: {photoLabel}
+                {uiText.poster.photoSourceLabel(photoLabel)}
                 <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
               </a>
             ) : (
-              <span>Photo source: {photoLabel}</span>
+              <span>{uiText.poster.photoSourceLabel(photoLabel)}</span>
             )}
           </span>
         )}
@@ -473,7 +477,7 @@ export const CARD_DEFS: CardDef[] = [
             )}
             <div className="bento-title__text">
               <h1 className="bento-title">
-                <span className="bento-title__place">{placeName}</span>
+                <TitlePlaceName placeName={placeName} />
                 <span className="bento-title__sub">{uiText.poster.portraitTitle}</span>
               </h1>
             </div>
@@ -650,7 +654,10 @@ export const CARD_DEFS: CardDef[] = [
           className: `bento-card bento-card--hero accent-forest ${speciesPatternClass(hero)}`,
           render: () => (
             <>
-              {renderSpeciesInfoButton(hero, { className: 'bento-species-info--hero' })}
+              {renderSpeciesInfoButton(hero, {
+                uiText,
+                className: 'bento-species-info--hero',
+              })}
               {renderSpeciesImage({
                 src: hero.imageUrl,
                 alt: hero.commonName,
@@ -692,7 +699,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
-            {renderSpeciesInfoButton(sp)}
+            {renderSpeciesInfoButton(sp, { uiText })}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -893,7 +900,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
-            {renderSpeciesInfoButton(sp)}
+            {renderSpeciesInfoButton(sp, { uiText })}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -955,7 +962,7 @@ export const CARD_DEFS: CardDef[] = [
                 className: 'bento-mini__img',
                 uiText,
               })}
-              {renderSpeciesInfoButton(sp)}
+              {renderSpeciesInfoButton(sp, { uiText })}
               <span className="bento-mini__ribbon bento-mini__ribbon--signature">
                 {uiText.poster.signatureRibbon(ratioLabel)}
               </span>
@@ -1161,7 +1168,7 @@ export function buildSpeciesBackupTiles(
             className: 'bento-mini__img',
             uiText,
           })}
-          {renderSpeciesInfoButton(sp)}
+          {renderSpeciesInfoButton(sp, { uiText })}
           <span className="bento-mini__name">{sp.commonName}</span>
           <span className="bento-mini__sci">{sp.scientificName}</span>
           {sp.popularity ? (

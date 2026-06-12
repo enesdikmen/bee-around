@@ -29,6 +29,8 @@ export interface PrintPosterOptions {
 const PAGE_LONG_EDGE_MM = 420 // A3 long edge balances crisp export with responsive PDF viewing.
 /** Keep a tiny safety margin for browser print rounding quirks. */
 const PAGE_SAFE_MARGIN_MM = 2
+/** Visible canvas around the poster grid, matching the screen preview. */
+const PAGE_BACKGROUND_MARGIN_MM = 12
 
 function sanitizeFilename(input: string): string {
   return (
@@ -51,10 +53,17 @@ export function printPosterToPdf(opts: PrintPosterOptions): void {
   // matches the on-screen poster exactly (no letterboxing, no crop).
   const ratio = gridW / gridH
   const longEdge = PAGE_LONG_EDGE_MM - PAGE_SAFE_MARGIN_MM * 2
+  const gridLongEdge = longEdge - PAGE_BACKGROUND_MARGIN_MM * 2
   const [pageW, pageH] =
     ratio >= 1
-      ? [longEdge, longEdge / ratio]
-      : [longEdge * ratio, longEdge]
+      ? [
+          longEdge,
+          gridLongEdge / ratio + PAGE_BACKGROUND_MARGIN_MM * 2,
+        ]
+      : [
+          gridLongEdge * ratio + PAGE_BACKGROUND_MARGIN_MM * 2,
+          longEdge,
+        ]
 
   // Inject (or replace) the dynamic @page rule. Using a dedicated <style>
   // node keeps it isolated from the static print CSS and easy to remove.
@@ -63,7 +72,10 @@ export function printPosterToPdf(opts: PrintPosterOptions): void {
   const style = document.createElement('style')
   style.id = STYLE_ID
   style.media = 'print'
-  style.textContent = `@page { size: ${pageW.toFixed(2)}mm ${pageH.toFixed(2)}mm; margin: 0; }`
+  style.textContent = `
+    @page { size: ${pageW.toFixed(2)}mm ${pageH.toFixed(2)}mm; margin: 0; }
+    :root { --print-page-padding: ${PAGE_BACKGROUND_MARGIN_MM}mm; }
+  `
   document.head.appendChild(style)
 
   // Title becomes the default filename in Chrome's Save-as-PDF dialog.

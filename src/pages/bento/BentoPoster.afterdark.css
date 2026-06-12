@@ -1,10 +1,6 @@
 /* Afterdark: a darker, neon-biologist sibling to Prism. */
 .theme-afterdark .bento-card--title.accent-gold {
-  background: linear-gradient(
-    135deg,
-    rgb(var(--color-afterdark-ember)) 0 68%,
-    rgb(var(--color-afterdark-peach)) 68% 100%
-  );
+  background: rgb(var(--color-afterdark-ember));
 }
 
 .theme-afterdark .bento-card.bento-sources.accent-gold {

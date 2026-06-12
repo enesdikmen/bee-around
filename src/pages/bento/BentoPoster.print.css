@@ -20,6 +20,7 @@
     --print-detail-border: 0.52mm;
     --print-grid-gap: 3.4mm;
     --print-grid-padding: 5.2mm;
+    --print-page-padding: 12mm;
     --print-shadow: 1.45mm 1.45mm 0 0 rgb(var(--color-ink));
   }
 
@@ -51,11 +52,11 @@
     overflow: hidden !important;
   }
 
-  /* Shell loses its viewport padding and min-height in print; the
-     poster fills the page edge-to-edge. */
+  /* Keep the screen's painted canvas visible around the poster instead
+     of letting the grid run edge-to-edge in the exported PDF. */
   .bento-shell {
     min-height: 0 !important;
-    padding: 0 !important;
+    padding: var(--print-page-padding) !important;
     height: 100% !important;
     overflow: hidden !important;
     background:
@@ -98,9 +99,8 @@
     filter: none !important;
   }
 
-  /* Grid fills the page. The inline `aspect-ratio` style on .bento-grid
-     stays, but the printed page (set via JS @page) already matches it,
-     so width:100% + height:100% lands on the same shape. */
+  /* Grid fills the inset content box. The JS page size accounts for this
+     padding, so the inner box keeps the exact poster aspect ratio. */
   .bento-grid-wrap {
     width: 100% !important;
     height: 100% !important;
