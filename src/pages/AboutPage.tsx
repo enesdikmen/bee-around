@@ -17,32 +17,49 @@ function AboutPage({ onBack }: Props) {
           <p className="about-kicker">About</p>
           <h1 id="about-page-title">Bee Around</h1>
           <p>
-            A compact biodiversity portrait for a place. This page is a simple
-            placeholder for the project story, methods, and team.
+            Bee Around turns open GBIF biodiversity records into playful,
+            shareable portraits of places. Pick a place, refresh for a new
+            lens, lock favorite cards, and export a poster for outreach,
+            education, or quick discovery.
           </p>
         </section>
 
         <section className="about-grid">
           <article className="about-card">
-            <h2>How data is calculated</h2>
+            <h2>How it works</h2>
             <p>
-              Short explanation of the data pipeline, ranking logic, card
-              selection, and how the poster is generated will go here.
+              The app summarizes available GBIF records for the selected area:
+              species, seasons, record types, conservation signals, and source
+              information. It shows patterns in the data, not a complete census
+              of nature.
+            </p>
+            <p>
+              <a href={`${import.meta.env.BASE_URL}docs/how-it-works.md`}>
+                Read how Bee Around works
+              </a>
             </p>
           </article>
 
           <article className="about-card">
-            <h2>Data sources</h2>
+            <h2>Data and credits</h2>
             <p>
-              Placeholder for GBIF, iNaturalist, Wikidata, image attribution, and
-              notes about known limits or assumptions.
+              Occurrence records, species names, dataset metadata, and many
+              attribution links come through GBIF. Species images are credited
+              when source metadata is available.
+            </p>
+            <p>
+              <a href={`${import.meta.env.BASE_URL}docs/data-and-attribution.md`}>
+                Read data and attribution notes
+              </a>
             </p>
           </article>
 
           <article className="about-card">
-            <h2>Developers</h2>
+            <h2>Challenge fit</h2>
             <p>
-              Add names, roles, contact links, and the GitHub repository here.
+              Bee Around is a GBIF challenge project for making open
+              biodiversity data easier to understand, share, and reuse in public
+              conversations.
             </p>
           </article>
         </section>

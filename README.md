@@ -1,73 +1,47 @@
 # Bee Around
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Bee Around turns open biodiversity records into playful, shareable portraits of places. Pick a city or country, and the app builds a poster-like view showing the species, seasons, record types, conservation signals, and data sources that appear in GBIF records for that place.
 
-Currently, two official plugins are available:
+It is designed for people who want a friendly way into biodiversity data: educators, students, outreach teams, GBIF nodes, local communities, challenge judges, and curious readers who may not normally open a data portal first.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## What It Does
 
-## React Compiler
+- Searches for places and builds a biodiversity poster for the selected area.
+- Highlights observed species, seasonal patterns, broad taxonomic groups, threatened species, and distinctive local species.
+- Lets each refresh produce a new version of the same place, so exploration feels more like discovery than a fixed report.
+- Lets users lock favorite cards, change visual themes, switch interface/name language, share an exact poster link, and export through the browser print dialog.
+- Shows attribution cues for GBIF data and species images where credits and licenses are available.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Bee Around is honest about what it shows: the poster reflects available GBIF records for the selected area. It is not a complete census of all life in that place.
 
-## Expanding the ESLint configuration
+## GBIF Challenge Fit
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Bee Around was built as a public-facing entry concept for the GBIF Ebbe Nielsen Challenge. It uses GBIF-mediated biodiversity data to create something people can understand, reuse, and share: a compact visual story of a place, with links and credits that point back to the underlying biodiversity network.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+The project aims to be useful for outreach, education, local biodiversity conversations, and quick demonstrations of what open biodiversity records can reveal.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Learn More
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- [How Bee Around works](docs/how-it-works.md)
+- [Data and attribution](docs/data-and-attribution.md)
+
+## Run Locally
+
+From this folder:
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open the local URL printed by Vite.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+To build a production version:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+## Notes
+
+Bee Around is a frontend-only React app. It calls public web APIs directly from the browser, including GBIF for biodiversity data and OpenStreetMap Nominatim for place search.
