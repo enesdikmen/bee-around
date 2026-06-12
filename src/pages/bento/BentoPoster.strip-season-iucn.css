@@ -17,7 +17,7 @@
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  object-position: 50% 30%;
+  object-position: center;
   border-radius: 8px;
   border: 2px solid rgb(var(--color-ink));
   background: rgb(var(--color-surface));

@@ -26,6 +26,7 @@ export type UiText = {
     lockCardTitle: string
     unlockCardTitle: string
     loadingSnapshot: string
+    loadingSnapshotSteps: string[]
   }
   citySearch: {
     placeholder: string
@@ -100,6 +101,7 @@ const englishText: UiText = {
     lockCardTitle: 'Lock card content and position',
     unlockCardTitle: 'Unlock card',
     loadingSnapshot: 'Loading full place snapshot...',
+    loadingSnapshotSteps: ['Taking off', 'Finding your place', 'Landing the snapshot'],
   },
   citySearch: {
     placeholder: 'Search a city...',
@@ -171,6 +173,7 @@ const frenchText: UiText = {
     lockCardTitle: 'Verrouiller le contenu et la position de la carte',
     unlockCardTitle: 'Deverrouiller la carte',
     loadingSnapshot: 'Chargement complet du lieu...',
+    loadingSnapshotSteps: ['Decollage', 'Recherche du lieu', 'Atterrissage du portrait'],
   },
   citySearch: {
     placeholder: 'Rechercher une ville...',
@@ -242,6 +245,7 @@ const spanishText: UiText = {
     lockCardTitle: 'Bloquear contenido y posicion de la tarjeta',
     unlockCardTitle: 'Desbloquear tarjeta',
     loadingSnapshot: 'Cargando instantanea completa del lugar...',
+    loadingSnapshotSteps: ['Despegando', 'Buscando el lugar', 'Aterrizando el retrato'],
   },
   citySearch: {
     placeholder: 'Buscar una ciudad...',
@@ -313,6 +317,7 @@ const turkishText: UiText = {
     lockCardTitle: 'Kart icerigini ve konumunu kilitle',
     unlockCardTitle: 'Kart kilidini ac',
     loadingSnapshot: 'Tam yer anlik goruntusu yukleniyor...',
+    loadingSnapshotSteps: ['Havalaniliyor', 'Yer bulunuyor', 'Portreye iniliyor'],
   },
   citySearch: {
     placeholder: 'Sehir ara...',
@@ -384,6 +389,7 @@ const germanText: UiText = {
     lockCardTitle: 'Inhalt und Position der Karte sperren',
     unlockCardTitle: 'Karte entsperren',
     loadingSnapshot: 'Vollstandiger Orts-Snapshot wird geladen...',
+    loadingSnapshotSteps: ['Abheben', 'Ort finden', 'Snapshot landen'],
   },
   citySearch: {
     placeholder: 'Stadt suchen...',
@@ -455,6 +461,7 @@ const italianText: UiText = {
     lockCardTitle: 'Blocca contenuto e posizione della scheda',
     unlockCardTitle: 'Sblocca scheda',
     loadingSnapshot: 'Caricamento snapshot completo del luogo...',
+    loadingSnapshotSteps: ['Decollo', 'Cerco il luogo', 'Atterro il ritratto'],
   },
   citySearch: {
     placeholder: 'Cerca una citta...',
@@ -526,6 +533,7 @@ const portugueseText: UiText = {
     lockCardTitle: 'Bloquear conteudo e posicao do cartao',
     unlockCardTitle: 'Desbloquear cartao',
     loadingSnapshot: 'Carregando instantaneo completo do lugar...',
+    loadingSnapshotSteps: ['Decolando', 'Encontrando o lugar', 'Pousando o retrato'],
   },
   citySearch: {
     placeholder: 'Buscar uma cidade...',

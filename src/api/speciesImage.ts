@@ -17,8 +17,8 @@ import { fetchSpeciesMedia } from './gbif'
 export type ImageSource = 'wikidata' | 'inaturalist' | 'gbif'
 
 export const ALL_IMAGE_SOURCES: ImageSource[] = [
-  'wikidata',
   'inaturalist',
+  'wikidata',
   'gbif',
 ]
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import lottie, { type AnimationItem } from 'lottie-web'
 
@@ -8,10 +8,13 @@ const BEE_LOTTIE_SPEED = 1.25
 interface Props {
   size?: number
   label?: string
+  steps?: string[]
 }
 
-export default function Loader({ size = 60, label }: Props) {
+export default function Loader({ size = 60, label, steps }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const visibleSteps = steps?.filter(Boolean).slice(0, 3) ?? []
+  const [stepIndex, setStepIndex] = useState(0)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -41,6 +44,23 @@ export default function Loader({ size = 60, label }: Props) {
     }
   }, [])
 
+  useEffect(() => {
+    setStepIndex(0)
+    if (visibleSteps.length < 2) return
+
+    const timer = window.setInterval(() => {
+      setStepIndex((current) => {
+        if (current >= visibleSteps.length - 1) {
+          window.clearInterval(timer)
+          return current
+        }
+        return current + 1
+      })
+    }, 1400)
+
+    return () => window.clearInterval(timer)
+  }, [visibleSteps.length])
+
   return (
     <motion.div
       className="lynx-loader"
@@ -56,7 +76,13 @@ export default function Loader({ size = 60, label }: Props) {
         aria-hidden="true"
       />
 
-      {label && <span className="lynx-loader__label">{label}</span>}
+      {visibleSteps.length > 0 ? (
+        <span className="lynx-loader__label" aria-label={label}>
+          {visibleSteps[stepIndex] ?? visibleSteps[0]}
+        </span>
+      ) : (
+        label && <span className="lynx-loader__label">{label}</span>
+      )}
     </motion.div>
   )
 }
