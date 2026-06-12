@@ -23,7 +23,12 @@ import type { UiLanguage, UiText } from '../i18n/uiText'
 import { seededShuffle } from '../hooks/lensData/shared'
 import { SPECIES_MINI_COUNT } from '../data/lensSelection'
 import { IMAGE_SOURCE_LABELS } from '../api/speciesImage'
-import type { ImageCredit, SpeciesCard, ThreatenedSpecies } from '../types/lens'
+import type {
+  ImageCredit,
+  SpeciesCard,
+  ThematicStripCard,
+  ThreatenedSpecies,
+} from '../types/lens'
 import type { SignatureSpeciesCard } from '../hooks/lensData/signatureSpecies'
 import { QRCodeSVG } from 'qrcode.react'
 // NOTE: ~36 MB JSON; bundled into the main chunk for now. When this card
@@ -143,7 +148,11 @@ const speciesPatternClass = (sp: Pick<SpeciesCard, 'highlight' | 'taxonLine'>) =
 }
 
 function toThematicTileInstance(
-  card: { id: string; kicker: string; species: CardBuildCtx['data']['thematicStripCards'][number]['species'] },
+  card: {
+    id: ThematicStripCard['id']
+    kicker: string
+    species: CardBuildCtx['data']['thematicStripCards'][number]['species']
+  },
   index: number,
   language: UiLanguage,
   uiText: UiText,
@@ -178,7 +187,7 @@ function toThematicTileInstance(
           className: 'bento-mini__img',
           uiText,
         })}
-        {renderSpeciesInfoButton(sp, { showHighlight: true })}
+        {renderSpeciesInfoButton(sp, { contextLine: thematicInfoLine(card.id) })}
         <span className="bento-mini__name">{sp.commonName}</span>
         <span className="bento-mini__sci">{sp.scientificName}</span>
         {sp.popularity ? (
@@ -229,14 +238,25 @@ type SpeciesInfoCard = SpeciesCard | ThreatenedSpecies | SignatureSpeciesCard
 const formatRatio = (ratio: number) =>
   ratio >= 10 ? `${Math.round(ratio)}×` : `${ratio.toFixed(1)}×`
 
+const thematicInfoLine = (id: ThematicStripCard['id']) => {
+  switch (id) {
+    case 'inSeason':
+      return 'Picked for this month'
+    case 'smallWonders':
+      return 'Picked from tiny taxa'
+    case 'nightCreatures':
+      return 'Picked from nocturnal taxa'
+  }
+}
+
 const renderSpeciesInfoButton = (
   sp: SpeciesInfoCard,
   {
     className = '',
-    showHighlight = false,
+    contextLine,
   }: {
     className?: string
-    showHighlight?: boolean
+    contextLine?: string
   } = {},
 ) => {
   const photoLabel = creditLabel(sp.imageCredit, sp.imageSource)
@@ -270,8 +290,8 @@ const renderSpeciesInfoButton = (
           <span className="bento-species-info__line">
             Signature species: {signatureRatio} more represented here
           </span>
-        ) : showHighlight && sp.highlight ? (
-          <span className="bento-species-info__line">Shown as: {sp.highlight}</span>
+        ) : contextLine ? (
+          <span className="bento-species-info__line">{contextLine}</span>
         ) : null}
         {photoLabel && (
           <span className="bento-species-info__photo">
@@ -1126,7 +1146,7 @@ export function buildSpeciesBackupTiles(
             className: 'bento-mini__img',
             uiText,
           })}
-          {renderSpeciesInfoButton(sp, { showHighlight: true })}
+          {renderSpeciesInfoButton(sp)}
           <span className="bento-mini__name">{sp.commonName}</span>
           <span className="bento-mini__sci">{sp.scientificName}</span>
           {sp.popularity ? (
