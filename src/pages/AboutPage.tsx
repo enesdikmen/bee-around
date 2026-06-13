@@ -3,6 +3,8 @@ interface Props {
 }
 
 function AboutPage({ onBack }: Props) {
+  const docsBaseUrl = 'https://github.com/enesdikmen/bee-around/blob/main'
+
   return (
     <section className="about-page" aria-labelledby="about-page-title">
       <div className="about-content">
@@ -34,7 +36,7 @@ function AboutPage({ onBack }: Props) {
               of nature.
             </p>
             <p>
-              <a href={`${import.meta.env.BASE_URL}docs/how-it-works.md`}>
+              <a href={`${docsBaseUrl}/docs/how-it-works.md`}>
                 Read how Bee Around works
               </a>
             </p>
@@ -48,7 +50,7 @@ function AboutPage({ onBack }: Props) {
               when source metadata is available.
             </p>
             <p>
-              <a href={`${import.meta.env.BASE_URL}docs/data-and-attribution.md`}>
+              <a href={`${docsBaseUrl}/docs/data-and-attribution.md`}>
                 Read data and attribution notes
               </a>
             </p>
