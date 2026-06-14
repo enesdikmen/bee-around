@@ -185,7 +185,7 @@ function toThematicTileInstance(
     render: () => (
       <>
         {renderSpeciesImage({
-          src: sp.squareImageUrl ?? sp.imageUrl,
+          src: sp.imageUrl,
           alt: sp.commonName,
           className: 'bento-mini__img',
           uiText,
@@ -242,11 +242,11 @@ type SpeciesInfoCard = SpeciesCard | ThreatenedSpecies | SignatureSpeciesCard
 const formatCount = (count: number | undefined, language: UiLanguage) =>
   typeof count === 'number' ? count.toLocaleString(language) : null
 
-const datasetMetaLine = (dataset: DatasetSummary) =>
+const datasetMetaLine = (dataset: DatasetSummary, uiText: UiText) =>
   [
-    dataset.publisher ? `Publisher: ${dataset.publisher}` : null,
+    dataset.publisher ? `${uiText.poster.sourcesPublisher}: ${dataset.publisher}` : null,
     dataset.doi ? `DOI: ${dataset.doi}` : null,
-    dataset.license ? `License: ${dataset.license}` : null,
+    dataset.license ? `${uiText.poster.sourcesLicense}: ${dataset.license}` : null,
   ].filter(Boolean).join(' · ')
 
 const formatRatio = (ratio: number) =>
@@ -369,20 +369,19 @@ const renderSourcesInfoButton = (
     <span
       className="bento-sources-info"
       tabIndex={0}
-      aria-label={`${uiText.poster.sources}: attribution details`}
+      aria-label={`${uiText.poster.sources}: ${uiText.poster.sourcesAttributionAria}`}
     >
       <span className="bento-sources-info__panel" role="tooltip">
         <span className="bento-sources-info__title">{uiText.poster.sources}</span>
         <span className="bento-sources-info__note">
-          Occurrence records, taxon names, counts, IUCN categories, evidence mix, seasonality,
-          and top dataset metadata come from GBIF.
+          {uiText.poster.sourcesDataNote}
         </span>
         {datasets.length > 0 && (
           <span className="bento-sources-info__section">
-            <span className="bento-sources-info__heading">Top contributing datasets</span>
+            <span className="bento-sources-info__heading">{uiText.poster.sourcesTopDatasets}</span>
             {datasets.map((dataset) => {
               const count = formatCount(dataset.occurrenceCount, language)
-              const meta = datasetMetaLine(dataset)
+              const meta = datasetMetaLine(dataset, uiText)
               return (
                 <a
                   key={dataset.key}
@@ -398,7 +397,7 @@ const renderSourcesInfoButton = (
                   </span>
                   {count && (
                     <span className="bento-sources-info__dataset-count">
-                      {count} matching records
+                      {uiText.poster.sourcesMatchingRecords(count)}
                     </span>
                   )}
                   {meta && <span className="bento-sources-info__dataset-meta">{meta}</span>}
@@ -408,8 +407,7 @@ const renderSourcesInfoButton = (
           </span>
         )}
         <span className="bento-sources-info__note">
-          Search/place boundaries use OpenStreetMap Nominatim. The QR code reopens this
-          Bee Around view; for formal reuse, review the linked GBIF dataset pages.
+          {uiText.poster.sourcesReuseNote}
         </span>
       </span>
     </span>
@@ -440,6 +438,14 @@ const renderSpeciesImage = ({
       role="img"
       aria-label={uiText.poster.imageUnavailableAria(alt)}
     />
+  )
+}
+
+const heroImageSrc = (src: string) => {
+  if (!/static\.inaturalist\.org/i.test(src)) return src
+  return src.replace(
+    /\/(square|small|medium|large|original)\.(jpe?g|png|webp)(?=($|\?))/i,
+    '/large.$2',
   )
 }
 
@@ -733,7 +739,7 @@ export const CARD_DEFS: CardDef[] = [
                 className: 'bento-species-info--hero',
               })}
               {renderSpeciesImage({
-                src: hero.imageUrl,
+                src: heroImageSrc(hero.imageUrl),
                 alt: hero.commonName,
                 className: 'bento-hero__img',
                 uiText,
@@ -969,7 +975,7 @@ export const CARD_DEFS: CardDef[] = [
         render: () => (
           <>
             {renderSpeciesImage({
-              src: sp.squareImageUrl ?? sp.imageUrl,
+              src: sp.imageUrl,
               alt: sp.commonName,
               className: 'bento-mini__img',
               uiText,
@@ -1031,7 +1037,7 @@ export const CARD_DEFS: CardDef[] = [
           render: () => (
             <>
               {renderSpeciesImage({
-                src: sp.squareImageUrl ?? sp.imageUrl,
+                src: sp.imageUrl,
                 alt: sp.commonName,
                 className: 'bento-mini__img',
                 uiText,
@@ -1238,7 +1244,7 @@ export function buildSpeciesBackupTiles(
       render: () => (
         <>
           {renderSpeciesImage({
-            src: sp.squareImageUrl ?? sp.imageUrl,
+            src: sp.imageUrl,
             alt: sp.commonName,
             className: 'bento-mini__img',
             uiText,

@@ -226,8 +226,25 @@
   gap: 0;
 }
 .bento-card--mini.bento-card--species-pattern {
-  --species-pattern-size: 34px 34px;
-  background-position: 0 0, 8px 100%;
+  --species-pattern-size: 30px 30px;
+  --species-pattern-panel-top: 66.6667%;
+  --species-pattern-panel-position: 5px 3px;
+  background-image: none;
+}
+.bento-card--mini.bento-card--species-pattern::before {
+  content: '';
+  position: absolute;
+  inset: var(--species-pattern-panel-top) 0 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    var(--species-pattern-mini-wash, var(--species-pattern-wash)),
+    var(--species-pattern);
+  background-position:
+    0 0,
+    var(--species-pattern-panel-position);
+  background-repeat: repeat;
+  background-size: auto, var(--species-pattern-size);
 }
 .bento-mini__img {
   --species-placeholder-icon-size: min(48%, 4.9rem);
@@ -242,6 +259,8 @@
 .bento-card--mini > .bento-mini__sci,
 .bento-card--mini > .bento-mini__count,
 .bento-card--mini > .bento-mini__status {
+  position: relative;
+  z-index: 1;
   padding-left: 0.55rem;
   padding-right: 0.55rem;
 }
@@ -449,6 +468,12 @@
 
   .bento-mini__img {
     aspect-ratio: 1.18 / 1;
+  }
+
+  .bento-card--mini.bento-card--species-pattern {
+    --species-pattern-panel-top: 84.7458%;
+    --species-pattern-size: 26px 26px;
+    --species-pattern-panel-position: 5px 2px;
   }
 
   .bento-card--mini > .bento-mini__name,

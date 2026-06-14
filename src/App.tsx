@@ -180,7 +180,7 @@ function App() {
           />
         </section>
         <section className={`app-view${view === 'about' ? '' : ' app-view--hidden'}`} aria-hidden={view !== 'about'}>
-          <AboutPage onBack={() => showView('poster')} />
+          <AboutPage language={commonNameLanguage} onBack={() => showView('poster')} />
         </section>
       </main>
     </div>

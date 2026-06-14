@@ -128,15 +128,11 @@
 
 .theme-afterdark .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern:not(.bento-card--thematic):not(.bento-card--at-risk):not(.bento-card--signature) {
   background-color: rgb(var(--species-pattern-bg, var(--color-surface-soft)));
-  background-image:
-    linear-gradient(
-      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88),
-      rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88)
-    ),
-    var(--species-pattern);
-  background-position: 0 0, 8px 100%;
-  background-repeat: repeat;
-  background-size: auto, var(--species-pattern-size);
+  background-image: none;
+  --species-pattern-mini-wash: linear-gradient(
+    rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88),
+    rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88)
+  );
 }
 
 .theme-afterdark .bento-card--filler {
