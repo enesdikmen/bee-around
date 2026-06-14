@@ -14,7 +14,6 @@ import { packWithRetries, type BoxSpec, type Placement } from '../lib/gridPacker
 import { printPosterToPdf } from '../lib/printPoster'
 import {
   getUiText,
-  normalizeUiLanguage,
   UI_LANGUAGES,
   type UiLanguage,
 } from '../i18n/uiText'
@@ -52,13 +51,13 @@ interface Props {
   theme: PosterThemeId
   themeOptions: Array<{ id: PosterThemeId; label: string; swatch: string }>
   onThemeChange: (theme: PosterThemeId) => void
+  commonNameLanguage: UiLanguage
+  onLanguageChange: (language: UiLanguage) => void
   onShowAbout?: () => void
   /** Optional seed restored from a shared URL. */
   initialSeed?: number
   /** Optional lock list restored from URL (`l=` param). */
   initialLocks?: LockListState
-  /** Optional language restored from URL (`lang=` param). */
-  initialLanguage?: string
 }
 
 function BentoPoster({
@@ -67,18 +66,16 @@ function BentoPoster({
   theme,
   themeOptions,
   onThemeChange,
+  commonNameLanguage,
+  onLanguageChange,
   onShowAbout,
   initialSeed,
   initialLocks,
-  initialLanguage,
 }: Props) {
   // Single seed for poster-level variation. Layout and data already consume it;
   // future style themes should derive from this same seed as well.
   const [posterSeed, setPosterSeed] = useState(
     initialSeed && Number.isFinite(initialSeed) ? initialSeed : 1,
-  )
-  const [commonNameLanguage, setCommonNameLanguage] = useState<UiLanguage>(() =>
-    normalizeUiLanguage(initialLanguage),
   )
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
@@ -95,7 +92,7 @@ function BentoPoster({
     closeThemeMenu()
   }
   const selectLanguage = (language: UiLanguage) => {
-    setCommonNameLanguage(language)
+    onLanguageChange(language)
     closeLanguageMenu()
   }
 
@@ -888,6 +885,14 @@ function BentoPoster({
           </div>
         )}
       </div>
+      <p className="bento-print-footer" aria-hidden="true">
+        <span>
+          Occurrence records, taxon names, counts, conservation signals, and top dataset
+          metadata come from GBIF. Place search and boundaries use OpenStreetMap Nominatim.
+          Scan the QR code or open this Bee Around view for dataset links, licenses,
+          DOI details, and full attribution.
+        </span>
+      </p>
     </div>
   )
 }

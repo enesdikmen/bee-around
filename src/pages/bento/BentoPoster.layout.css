@@ -70,6 +70,10 @@
   z-index: 1;
 }
 
+.bento-print-footer {
+  display: none;
+}
+
 /* Hide the browser's broken-image glyph while images are loading or
    when no source is enabled. The card's tan background shows through. */
 img[src=""] { visibility: hidden; }

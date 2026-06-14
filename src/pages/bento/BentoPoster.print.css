@@ -88,6 +88,7 @@
   .bento-toolbar,
   .bento-lock-btn,
   .bento-species-info,
+  .bento-sources-info,
   .bento-grid-loading,
   .app-header {
     display: none !important;
@@ -106,6 +107,27 @@
     height: 100% !important;
     overflow: visible !important;
   }
+
+  .bento-print-footer {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: 4.4mm !important;
+    z-index: 3 !important;
+    display: block !important;
+    width: min(66%, 210mm) !important;
+    margin: 0 !important;
+    padding-top: 1.25mm !important;
+    border-top: 0.28mm solid rgb(var(--color-ink) / 0.22) !important;
+    color: rgb(var(--color-ink-soft)) !important;
+    font-family: var(--font-sans) !important;
+    font-size: 1.92mm !important;
+    font-weight: 700 !important;
+    letter-spacing: 0 !important;
+    line-height: 1.32 !important;
+    text-align: center !important;
+    transform: translateX(-50%) !important;
+  }
+
   .bento-grid {
     max-width: none !important;
     width: 100% !important;
@@ -429,6 +451,8 @@
     gap: 0.08rem !important;
     min-height: 0 !important;
     overflow: hidden !important;
+    justify-content: center !important;
+    transform: translateY(-0.34rem) !important;
   }
 
   .bento-sources__brand {
@@ -447,7 +471,7 @@
   .bento-sources__separator {
     width: min(72%, 11rem) !important;
     height: 0.18rem !important;
-    margin: 0.85rem 0 0.65rem !important;
+    margin: 0.7rem 0 0.45rem !important;
   }
 
   .bento-sources .bento-card__kicker {
@@ -456,7 +480,7 @@
 
   .bento-sources__logo-link {
     width: min(100%, 15rem) !important;
-    margin: 0 !important;
+    margin: 0 0 0.12rem !important;
   }
 
   .bento-sources__qr {
@@ -475,7 +499,7 @@
 
   .bento-sources__line {
     margin: 0 !important;
-    font-size: 1.08rem !important;
+    font-size: 1rem !important;
     line-height: 1.08 !important;
     font-weight: 800 !important;
   }

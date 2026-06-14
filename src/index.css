@@ -1026,69 +1026,39 @@ textarea {
 
 .about-developer-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-height: 100%;
-  aspect-ratio: 1 / 1.28;
-  padding: 0.72rem;
-  overflow: hidden;
-  background: rgb(var(--color-surface-soft-alt-2));
-}
-
-.about-developer-card__image {
-  position: absolute;
-  inset: 0.72rem;
-  border: 2px solid rgb(var(--color-ink));
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at 50% 34%, rgb(var(--color-gold)) 0 14%, transparent 15%),
-    radial-gradient(circle at 50% 88%, rgb(var(--color-surface)) 0 28%, transparent 29%),
-    linear-gradient(135deg, rgb(var(--color-surface-soft-alt-2)), rgb(var(--color-surface)));
-}
-
-.about-developer-card__ribbon {
-  position: absolute;
-  top: 0.95rem;
-  left: 0.95rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 1.85rem;
-  padding: 0.28rem 0.58rem;
-  border: 2px solid rgb(var(--color-ink));
-  border-radius: 999px;
-  background: rgb(var(--color-state-danger));
-  box-shadow: 2px 2px 0 0 rgb(var(--color-ink));
-  font-size: 0.7rem;
-  font-weight: 950;
-  text-transform: uppercase;
-}
-
-.about-developer-card__name,
-.about-developer-card__sci {
-  position: relative;
-  z-index: 1;
-  display: block;
+  align-self: stretch;
   width: 100%;
-  padding: 0.16rem 0.38rem;
-  color: rgb(var(--color-ink));
-  text-shadow: 0 1px 0 rgb(var(--color-surface));
+  max-width: 18rem;
+  min-height: 100%;
+  overflow: hidden;
 }
 
-.about-developer-card__name {
-  margin-top: auto;
-  font-family: var(--font-display);
-  font-size: clamp(1rem, 1.55vw, 1.28rem);
-  line-height: 1;
-  text-transform: uppercase;
+.about-developer-card__empty-image {
+  border-bottom: 3px solid rgb(var(--color-ink));
+  background: rgb(var(--color-surface-soft-alt));
 }
 
-.about-developer-card__sci {
-  font-style: italic;
-  font-weight: 800;
-  font-size: 0.82rem;
-  opacity: 0.82;
+.about-developer-card > .bento-mini__name,
+.about-developer-card > .bento-mini__sci,
+.about-developer-card > .bento-mini__count {
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
+}
+
+.about-developer-card > .bento-mini__name {
+  font-size: clamp(1.15rem, 2.1vw, 1.55rem);
+  margin-top: 0.65rem;
+}
+
+.about-developer-card > .bento-mini__sci,
+.about-developer-card > .bento-mini__count {
+  font-size: clamp(0.82rem, 1.25vw, 1rem);
+}
+
+.about-developer-card > .bento-mini__ribbon {
+  font-size: 0.72rem;
+  right: 8px;
+  bottom: 8px;
 }
 
 .about-card h1,

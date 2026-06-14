@@ -50,11 +50,15 @@ function AboutPage({ onBack }: Props) {
             </div>
           </section>
 
-          <article className="about-card about-developer-card" aria-label="Developer card">
-            <div className="about-developer-card__image" role="img" aria-label="Developer photo placeholder" />
-            <span className="about-developer-card__ribbon">Developer</span>
-            <span className="about-developer-card__name">Enes Dikmen</span>
-            <span className="about-developer-card__sci">Homo sapiens</span>
+          <article
+            className="about-developer-card bento-card bento-card--mini accent-paper"
+            aria-label="Developer card"
+          >
+            <div className="bento-mini__img about-developer-card__empty-image" role="img" aria-label="Developer photo placeholder" />
+            <span className="bento-mini__name">Enes Dikmen</span>
+            <span className="bento-mini__sci">Homo sapiens</span>
+            <span className="bento-mini__count">1</span>
+            <span className="bento-mini__ribbon">Developer</span>
           </article>
         </section>
 

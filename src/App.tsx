@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import BentoPoster from './pages/BentoPoster'
 import AboutPage from './pages/AboutPage'
 import { places } from './data/lensFallbacks'
+import {
+  getUiText,
+  normalizeUiLanguage,
+  UI_LANGUAGES,
+  type UiLanguage,
+} from './i18n/uiText'
 import {
   canonicalizePlace,
   readLanguageFromLocation,
@@ -93,6 +99,9 @@ function App() {
   )
   const [view, setView] = useState<AppView>(readViewFromLocation)
   const [theme, setTheme] = useState<AppTheme>(readThemeFromStorage)
+  const [commonNameLanguage, setCommonNameLanguage] = useState<UiLanguage>(() =>
+    normalizeUiLanguage(initialLanguage),
+  )
 
   // Always canonicalize so the sharer's `place.id`/`label` match what a
   // receiver will reconstruct from the URL — this keeps seeded RNG keys
@@ -145,6 +154,15 @@ function App() {
           </span>
         </button>
       </header>
+      {view === 'about' && (
+        <AppHeaderControls
+          theme={theme}
+          themeOptions={THEME_OPTIONS}
+          onThemeChange={setTheme}
+          commonNameLanguage={commonNameLanguage}
+          onLanguageChange={setCommonNameLanguage}
+        />
+      )}
 
       <main className="app-main">
         <section className={`app-view${view === 'poster' ? '' : ' app-view--hidden'}`} aria-hidden={view !== 'poster'}>
@@ -154,9 +172,10 @@ function App() {
             theme={theme}
             themeOptions={THEME_OPTIONS}
             onThemeChange={setTheme}
+            commonNameLanguage={commonNameLanguage}
+            onLanguageChange={setCommonNameLanguage}
             initialSeed={initialShare?.seed}
             initialLocks={initialLocks}
-            initialLanguage={initialLanguage ?? undefined}
             onShowAbout={() => showView('about')}
           />
         </section>
@@ -164,6 +183,140 @@ function App() {
           <AboutPage onBack={() => showView('poster')} />
         </section>
       </main>
+    </div>
+  )
+}
+
+function AppHeaderControls({
+  theme,
+  themeOptions,
+  onThemeChange,
+  commonNameLanguage,
+  onLanguageChange,
+}: {
+  theme: AppTheme
+  themeOptions: AppThemeOption[]
+  onThemeChange: (theme: AppTheme) => void
+  commonNameLanguage: UiLanguage
+  onLanguageChange: (language: UiLanguage) => void
+}) {
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
+  const themeMenuRef = useRef<HTMLDivElement | null>(null)
+  const languageMenuRef = useRef<HTMLDivElement | null>(null)
+  const activeThemeOption =
+    themeOptions.find((option) => option.id === theme) ?? themeOptions[0]
+  const uiText = getUiText(commonNameLanguage)
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (!themeMenuRef.current?.contains(target)) setIsThemeMenuOpen(false)
+      if (!languageMenuRef.current?.contains(target)) setIsLanguageMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [])
+
+  return (
+    <div className="bento-toolbar app-header-controls" aria-label="Display options">
+      <div className="bento-toolbar__menu" ref={themeMenuRef}>
+        <button
+          type="button"
+          className="bento-toolbar__icon-btn bento-toolbar__icon-btn--theme"
+          title="Theme"
+          aria-label="Theme"
+          aria-haspopup="menu"
+          aria-expanded={isThemeMenuOpen}
+          onClick={() =>
+            setIsThemeMenuOpen((open) => {
+              const next = !open
+              if (next) setIsLanguageMenuOpen(false)
+              return next
+            })
+          }
+          style={{ '--theme-swatch': activeThemeOption?.swatch } as React.CSSProperties}
+        >
+          <span className="bento-toolbar__theme-trigger-swatch" aria-hidden="true" />
+        </button>
+        {isThemeMenuOpen && (
+          <div className="bento-toolbar__theme-popover" role="menu" aria-label="Theme">
+            {themeOptions.map((option) => {
+              const isActive = option.id === theme
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={isActive}
+                  aria-label={option.label}
+                  title={option.label}
+                  className={
+                    'bento-toolbar__theme-option' +
+                    (isActive ? ' bento-toolbar__theme-option--active' : '')
+                  }
+                  style={{ '--swatch': option.swatch } as React.CSSProperties}
+                  onClick={() => {
+                    onThemeChange(option.id)
+                    setIsThemeMenuOpen(false)
+                  }}
+                />
+              )
+            })}
+          </div>
+        )}
+      </div>
+      <div className="bento-toolbar__menu" ref={languageMenuRef}>
+        <button
+          type="button"
+          className="bento-toolbar__icon-btn"
+          title={uiText.toolbar.language}
+          aria-label={uiText.toolbar.languageAria}
+          aria-haspopup="menu"
+          aria-expanded={isLanguageMenuOpen}
+          onClick={() =>
+            setIsLanguageMenuOpen((open) => {
+              const next = !open
+              if (next) setIsThemeMenuOpen(false)
+              return next
+            })
+          }
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <circle cx="12" cy="12" r="8.5" />
+            <path d="M3.5 12h17" />
+            <path d="M12 3.5c2.3 2.4 3.6 5.4 3.6 8.5S14.3 18.1 12 20.5" />
+            <path d="M12 3.5c-2.3 2.4-3.6 5.4-3.6 8.5S9.7 18.1 12 20.5" />
+          </svg>
+        </button>
+        {isLanguageMenuOpen && (
+          <div className="bento-toolbar__menu-popover" role="menu" aria-label={uiText.toolbar.language}>
+            {UI_LANGUAGES.map((option) => {
+              const isActive = option.code === commonNameLanguage
+              return (
+                <button
+                  key={option.code}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={isActive}
+                  className={
+                    'bento-toolbar__menu-option' +
+                    (isActive ? ' bento-toolbar__menu-option--active' : '')
+                  }
+                  onClick={() => {
+                    onLanguageChange(option.code)
+                    setIsLanguageMenuOpen(false)
+                  }}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
