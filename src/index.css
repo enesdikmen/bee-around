@@ -418,7 +418,7 @@ textarea {
 
 .about-top-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
+  grid-template-columns: minmax(0, 1fr) minmax(28rem, 36rem);
   gap: 1rem;
   align-items: stretch;
   max-width: 1080px;
@@ -1024,6 +1024,13 @@ textarea {
   background: rgb(var(--color-gold));
 }
 
+.about-team-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+
 .about-developer-card {
   position: relative;
   align-self: stretch;
@@ -1046,13 +1053,13 @@ textarea {
 }
 
 .about-developer-card > .bento-mini__name {
-  font-size: clamp(1.15rem, 2.1vw, 1.55rem);
+  font-size: clamp(0.92rem, 1.55vw, 1.18rem);
   margin-top: 0.65rem;
 }
 
 .about-developer-card > .bento-mini__sci,
 .about-developer-card > .bento-mini__count {
-  font-size: clamp(0.82rem, 1.25vw, 1rem);
+  font-size: clamp(0.72rem, 1vw, 0.86rem);
 }
 
 .about-developer-card > .bento-mini__ribbon {
@@ -1161,6 +1168,11 @@ textarea {
     justify-self: start;
   }
 
+  .about-team-cards {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 18rem));
+  }
+
   .about-split--area,
   .about-split--data,
   .about-split--species {
@@ -1221,6 +1233,10 @@ textarea {
 
   .about-developer-card {
     width: 100%;
+  }
+
+  .about-team-cards {
+    grid-template-columns: 1fr;
   }
 
   .about-topic__head {

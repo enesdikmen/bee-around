@@ -9,6 +9,7 @@ const dataSignals = ['Month', 'Year', 'Kingdom', 'Dataset', 'Evidence type']
 function AboutPage({ onBack }: Props) {
   const docsBaseUrl = 'https://github.com/enesdikmen/bee-around/blob/main'
   const developerImageSrc = `${import.meta.env.BASE_URL}me.jpeg`
+  const designerImageSrc = `${import.meta.env.BASE_URL}hasan.png`
 
   return (
     <section className="about-page" aria-labelledby="about-page-title">
@@ -51,16 +52,28 @@ function AboutPage({ onBack }: Props) {
             </div>
           </section>
 
-          <article
-            className="about-developer-card bento-card bento-card--mini accent-paper"
-            aria-label="Developer card"
-          >
-            <img className="bento-mini__img about-developer-card__empty-image" src={developerImageSrc} alt="Enes Dikmen" />
-            <span className="bento-mini__name">Enes Dikmen</span>
-            <span className="bento-mini__sci">Homo sapiens</span>
-            <span className="bento-mini__count">1</span>
-            <span className="bento-mini__ribbon">Developer</span>
-          </article>
+          <div className="about-team-cards" aria-label="Project team">
+            <article
+              className="about-developer-card bento-card bento-card--mini accent-paper"
+              aria-label="Developer card"
+            >
+              <img className="bento-mini__img about-developer-card__empty-image" src={developerImageSrc} alt="Enes Dikmen" />
+              <span className="bento-mini__name">Enes Dikmen</span>
+              <span className="bento-mini__sci">Homo sapiens</span>
+              <span className="bento-mini__count">1</span>
+              <span className="bento-mini__ribbon">Developer</span>
+            </article>
+            <article
+              className="about-developer-card bento-card bento-card--mini accent-paper"
+              aria-label="Designer card"
+            >
+              <img className="bento-mini__img about-developer-card__empty-image" src={designerImageSrc} alt="Hasan Yalçınkaya" />
+              <span className="bento-mini__name">Hasan Yalçınkaya</span>
+              <span className="bento-mini__sci">Homo sapiens</span>
+              <span className="bento-mini__count">1</span>
+              <span className="bento-mini__ribbon">Designer</span>
+            </article>
+          </div>
         </section>
 
         <section className="about-grid about-grid--story">
