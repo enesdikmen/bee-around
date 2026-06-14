@@ -8,6 +8,7 @@ const dataSignals = ['Month', 'Year', 'Kingdom', 'Dataset', 'Evidence type']
 
 function AboutPage({ onBack }: Props) {
   const docsBaseUrl = 'https://github.com/enesdikmen/bee-around/blob/main'
+  const developerImageSrc = `${import.meta.env.BASE_URL}me.jpeg`
 
   return (
     <section className="about-page" aria-labelledby="about-page-title">
@@ -54,7 +55,7 @@ function AboutPage({ onBack }: Props) {
             className="about-developer-card bento-card bento-card--mini accent-paper"
             aria-label="Developer card"
           >
-            <div className="bento-mini__img about-developer-card__empty-image" role="img" aria-label="Developer photo placeholder" />
+            <img className="bento-mini__img about-developer-card__empty-image" src={developerImageSrc} alt="Enes Dikmen" />
             <span className="bento-mini__name">Enes Dikmen</span>
             <span className="bento-mini__sci">Homo sapiens</span>
             <span className="bento-mini__count">1</span>
