@@ -46,6 +46,10 @@ export type PinCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right
 /** Allowed tile sizes on the bento grid. The packer assumes 1..2 cells per axis. */
 export type TileSize = { w: 1 | 2; h: 1 | 2 }
 
+export type TileRenderCtx = {
+  disableTooltips?: boolean
+}
+
 /** A single rendered card on the poster. */
 export type Tile = {
   id: string
@@ -59,7 +63,7 @@ export type Tile = {
    *  freeze a tile to its previous placement across Regenerate. */
   pinXY?: { x: number; y: number }
   className: string
-  render: () => ReactNode
+  render: (ctx?: TileRenderCtx) => ReactNode
   /** Stable slot identifier used by the per-card lock feature. Tiles
    *  without a slotId are not lockable (e.g. fillers). */
   slotId?: string
@@ -95,7 +99,7 @@ export type CardBuildCtx = {
  *  instance (e.g. alternating accents). */
 export type TileInstance = {
   id: string
-  render: () => ReactNode
+  render: (ctx?: TileRenderCtx) => ReactNode
   size?: TileSize
   anchor?: Anchor
   pin?: PinCorner
@@ -184,7 +188,7 @@ function toThematicTileInstance(
       'bento-card bento-card--mini bento-card--thematic ' +
       `${index % 2 === 0 ? 'accent-gold' : 'accent-forest'}` +
       beeBuzzCardClass(sp),
-    render: () => (
+    render: ({ disableTooltips = false } = {}) => (
       <>
         {renderSpeciesImage({
           src: sp.imageUrl,
@@ -193,7 +197,11 @@ function toThematicTileInstance(
           uiText,
         })}
         {renderBeeChat(sp)}
-        {renderSpeciesInfoButton(sp, { uiText, contextLine: thematicInfoLine(card.id, uiText) })}
+        {renderSpeciesInfoButton(sp, {
+          uiText,
+          contextLine: thematicInfoLine(card.id, uiText),
+          disabled: disableTooltips,
+        })}
         <span className="bento-mini__name">{sp.commonName}</span>
         <span className="bento-mini__sci">{sp.scientificName}</span>
         {sp.popularity ? (
@@ -296,10 +304,12 @@ const renderSpeciesInfoButton = (
     uiText,
     className = '',
     contextLine,
+    disabled = false,
   }: {
     uiText: UiText
     className?: string
     contextLine?: string
+    disabled?: boolean
   },
 ) => {
   const photoLabel = creditLabel(sp.imageCredit, sp.imageSource)
@@ -378,6 +388,7 @@ const renderSpeciesInfoButton = (
       ariaLabel={uiText.poster.speciesDetailsAria(sp.commonName)}
       panelClassName="bento-species-info__panel"
       panel={panel}
+      disabled={disabled}
     />
   )
 }
@@ -387,9 +398,11 @@ const renderSourcesInfoButton = (
   {
     language,
     uiText,
+    disabled = false,
   }: {
     language: UiLanguage
     uiText: UiText
+    disabled?: boolean
   },
 ) => {
   const datasets = data.datasetSummaries.slice(0, 5)
@@ -441,6 +454,7 @@ const renderSourcesInfoButton = (
       ariaLabel={`${uiText.poster.sources}: ${uiText.poster.sourcesAttributionAria}`}
       panelClassName="bento-sources-info__panel"
       panel={panel}
+      disabled={disabled}
     />
   )
 }
@@ -763,11 +777,12 @@ export const CARD_DEFS: CardDef[] = [
           slotId: 'hero',
           speciesIds: [hero.id],
           className: `bento-card bento-card--hero accent-forest ${speciesPatternClass(hero)}${beeBuzzCardClass(hero)}`,
-          render: () => (
+          render: ({ disableTooltips = false } = {}) => (
             <>
               {renderSpeciesInfoButton(hero, {
                 uiText,
                 className: 'bento-species-info--hero',
+                disabled: disableTooltips,
               })}
               {renderSpeciesImage({
                 src: heroImageSrc(hero.imageUrl),
@@ -803,7 +818,7 @@ export const CARD_DEFS: CardDef[] = [
         slotId: `mini-${idx}`,
         speciesIds: [sp.id],
         className: `bento-card bento-card--mini accent-paper ${speciesPatternClass(sp)}${beeBuzzCardClass(sp)}`,
-        render: () => (
+        render: ({ disableTooltips = false } = {}) => (
           <>
             {renderSpeciesImage({
               src: sp.imageUrl,
@@ -812,7 +827,7 @@ export const CARD_DEFS: CardDef[] = [
               uiText,
             })}
             {renderBeeChat(sp)}
-            {renderSpeciesInfoButton(sp, { uiText })}
+            {renderSpeciesInfoButton(sp, { uiText, disabled: disableTooltips })}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -1005,7 +1020,7 @@ export const CARD_DEFS: CardDef[] = [
         slotId: `at-risk-${i}`,
         speciesIds: [sp.id],
         className: `bento-card bento-card--mini bento-card--at-risk accent-paper${beeBuzzCardClass(sp)}`,
-        render: () => (
+        render: ({ disableTooltips = false } = {}) => (
           <>
             {renderSpeciesImage({
               src: sp.imageUrl,
@@ -1014,7 +1029,7 @@ export const CARD_DEFS: CardDef[] = [
               uiText,
             })}
             {renderBeeChat(sp)}
-            {renderSpeciesInfoButton(sp, { uiText })}
+            {renderSpeciesInfoButton(sp, { uiText, disabled: disableTooltips })}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
             {sp.popularity ? (
@@ -1068,7 +1083,7 @@ export const CARD_DEFS: CardDef[] = [
           slotId: 'signature-species',
           speciesIds: [sp.id],
           className: `bento-card bento-card--mini bento-card--signature accent-forest${beeBuzzCardClass(sp)}`,
-          render: () => (
+          render: ({ disableTooltips = false } = {}) => (
             <>
               {renderSpeciesImage({
                 src: sp.imageUrl,
@@ -1077,7 +1092,7 @@ export const CARD_DEFS: CardDef[] = [
                 uiText,
               })}
               {renderBeeChat(sp)}
-              {renderSpeciesInfoButton(sp, { uiText })}
+              {renderSpeciesInfoButton(sp, { uiText, disabled: disableTooltips })}
               <span className="bento-mini__ribbon bento-mini__ribbon--signature">
                 {uiText.poster.signatureRibbon(ratioLabel)}
               </span>
@@ -1104,7 +1119,7 @@ export const CARD_DEFS: CardDef[] = [
         {
           id: 'sources',
           slotId: 'sources',
-          render: () => (
+          render: ({ disableTooltips = false } = {}) => (
             <>
               <div className="bento-sources__text">
                 <div className="bento-sources__brand" aria-label="Bee Around">
@@ -1149,7 +1164,11 @@ export const CARD_DEFS: CardDef[] = [
                   />
                 </div>
               )}
-              {renderSourcesInfoButton(data, { language, uiText })}
+              {renderSourcesInfoButton(data, {
+                language,
+                uiText,
+                disabled: disableTooltips,
+              })}
             </>
           ),
         },
@@ -1276,7 +1295,7 @@ export function buildSpeciesBackupTiles(
       w: 1,
       h: 1,
       className: `bento-card bento-card--mini accent-paper ${speciesPatternClass(sp)}${beeBuzzCardClass(sp)}`,
-      render: () => (
+      render: ({ disableTooltips = false } = {}) => (
         <>
           {renderSpeciesImage({
             src: sp.imageUrl,
@@ -1285,7 +1304,7 @@ export function buildSpeciesBackupTiles(
             uiText,
           })}
           {renderBeeChat(sp)}
-          {renderSpeciesInfoButton(sp, { uiText })}
+          {renderSpeciesInfoButton(sp, { uiText, disabled: disableTooltips })}
           <span className="bento-mini__name">{sp.commonName}</span>
           <span className="bento-mini__sci">{sp.scientificName}</span>
           {sp.popularity ? (

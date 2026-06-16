@@ -908,7 +908,7 @@ function BentoPoster({
                       </svg>
                     </button>
                   )}
-                  {t.render()}
+                  {t.render({ disableTooltips: isLoadingSnapshot })}
                 </>
               )
 

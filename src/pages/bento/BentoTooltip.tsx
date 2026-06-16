@@ -18,6 +18,7 @@ type BentoTooltipProps = {
   ariaLabel: string
   panelClassName: string
   panel: ReactNode
+  disabled?: boolean
 }
 
 function BentoTooltip({
@@ -25,6 +26,7 @@ function BentoTooltip({
   ariaLabel,
   panelClassName,
   panel,
+  disabled = false,
 }: BentoTooltipProps) {
   const triggerRef = useRef<HTMLSpanElement | null>(null)
   const panelRef = useRef<HTMLSpanElement | null>(null)
@@ -84,7 +86,15 @@ function BentoTooltip({
 
   useLayoutEffect(() => () => clearCloseTimer(), [])
 
+  useLayoutEffect(() => {
+    if (!disabled) return
+    clearCloseTimer()
+    const closeId = window.setTimeout(() => setIsOpen(false), 0)
+    return () => window.clearTimeout(closeId)
+  }, [disabled])
+
   const openTooltip = () => {
+    if (disabled) return
     clearCloseTimer()
     setPortalRoot(
       triggerRef.current?.closest('.app-shell') ??
@@ -94,7 +104,7 @@ function BentoTooltip({
   }
 
   const tooltip =
-    isOpen && portalRoot
+    isOpen && !disabled && portalRoot
       ? createPortal(
         <span
           ref={panelRef}
@@ -120,8 +130,9 @@ function BentoTooltip({
       <span
         ref={triggerRef}
         className={className}
-        tabIndex={0}
+        tabIndex={disabled ? -1 : 0}
         aria-label={ariaLabel}
+        aria-disabled={disabled || undefined}
         onMouseEnter={openTooltip}
         onMouseLeave={scheduleClose}
         onFocus={openTooltip}
