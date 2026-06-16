@@ -449,6 +449,12 @@
     --species-pattern-size: 56px 56px;
   }
 
+  .bento-card--mini.bento-card--species-pattern {
+    --species-pattern-panel-position: 5px 3px;
+    --species-pattern-panel-top: 66.6667%;
+    --species-pattern-size: 30px 30px;
+  }
+
   .bento-card--species-pattern .bento-hero__body {
     background-size: auto, 76px 76px !important;
   }

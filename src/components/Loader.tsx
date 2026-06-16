@@ -14,7 +14,9 @@ interface Props {
 export default function Loader({ size = 60, label, steps }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const visibleSteps = steps?.filter(Boolean).slice(0, 3) ?? []
-  const [stepIndex, setStepIndex] = useState(0)
+  const stepsKey = visibleSteps.join('\0')
+  const [stepState, setStepState] = useState({ key: stepsKey, index: 0 })
+  const stepIndex = stepState.key === stepsKey ? stepState.index : 0
   const displayLabel =
     visibleSteps.length > 0 ? (visibleSteps[stepIndex] ?? visibleSteps[0]) : label
 
@@ -47,21 +49,21 @@ export default function Loader({ size = 60, label, steps }: Props) {
   }, [])
 
   useEffect(() => {
-    setStepIndex(0)
     if (visibleSteps.length < 2) return
 
     const timer = window.setInterval(() => {
-      setStepIndex((current) => {
-        if (current >= visibleSteps.length - 1) {
+      setStepState((current) => {
+        const currentIndex = current.key === stepsKey ? current.index : 0
+        if (currentIndex >= visibleSteps.length - 1) {
           window.clearInterval(timer)
-          return current
+          return { key: stepsKey, index: currentIndex }
         }
-        return current + 1
+        return { key: stepsKey, index: currentIndex + 1 }
       })
     }, 1400)
 
     return () => window.clearInterval(timer)
-  }, [visibleSteps.length])
+  }, [stepsKey, visibleSteps.length])
 
   return (
     <motion.div

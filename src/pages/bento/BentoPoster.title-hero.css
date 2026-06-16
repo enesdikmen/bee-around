@@ -528,9 +528,13 @@
 .bento-species-info {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 3;
   outline: none;
   pointer-events: auto;
+}
+
+.bento-card:has(.bento-species-info) > :not(.bento-species-info):not(.bento-lock-btn) {
+  pointer-events: none;
 }
 
 .bento-species-info__panel {

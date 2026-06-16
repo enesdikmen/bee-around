@@ -30,6 +30,7 @@ function BentoTooltip({
   const panelRef = useRef<HTMLSpanElement | null>(null)
   const closeTimerRef = useRef<number | null>(null)
   const [isOpen, setIsOpen] = useState(false)
+  const [portalRoot, setPortalRoot] = useState<Element | null>(null)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
 
   const clearCloseTimer = () => {
@@ -85,11 +86,15 @@ function BentoTooltip({
 
   const openTooltip = () => {
     clearCloseTimer()
+    setPortalRoot(
+      triggerRef.current?.closest('.app-shell') ??
+        (typeof document !== 'undefined' ? document.body : null),
+    )
     setIsOpen(true)
   }
 
   const tooltip =
-    isOpen && typeof document !== 'undefined'
+    isOpen && portalRoot
       ? createPortal(
         <span
           ref={panelRef}
@@ -106,7 +111,7 @@ function BentoTooltip({
         >
           {panel}
         </span>,
-        triggerRef.current?.closest('.app-shell') ?? document.body,
+        portalRoot,
       )
       : null
 
