@@ -38,6 +38,7 @@ export type LockEntry = {
 export type LockListState = {
   present: boolean
   locks: LockEntry[]
+  unlockedDefaultSlotIds: string[]
 }
 
 const SCALE = 10000
@@ -269,6 +270,9 @@ export function readThemeFromLocation(): string | null {
  *   locks span.
  * - An empty `l=` value (no entries) means "user has explicitly cleared
  *   all locks"; absent `l=` param means "apply defaults".
+ * - `u=` stores default lock slots (currently title/sources) that the user
+ *   explicitly unlocked, so links can still combine custom locks with the
+ *   remaining implicit defaults.
  */
 export function encodeLocks(locks: LockEntry[]): string {
   return locks
@@ -288,8 +292,21 @@ export function encodeLocks(locks: LockEntry[]): string {
     .join(',')
 }
 
+function encodeSlotIdList(slotIds: string[]): string {
+  return Array.from(new Set(slotIds))
+    .filter((slotId) => /^[A-Za-z0-9-]+$/.test(slotId))
+    .join(',')
+}
+
+function decodeSlotIdList(raw: string | null): string[] {
+  if (!raw) return []
+  return Array.from(new Set(raw.split(','))).filter((slotId) =>
+    /^[A-Za-z0-9-]+$/.test(slotId),
+  )
+}
+
 export function decodeLocks(raw: string): LockListState {
-  if (raw === '') return { present: true, locks: [] }
+  if (raw === '') return { present: true, locks: [], unlockedDefaultSlotIds: [] }
   const locks: LockEntry[] = []
   for (const part of raw.split(',')) {
     const fields = part.split('_')
@@ -309,16 +326,25 @@ export function decodeLocks(raw: string): LockListState {
     }
     locks.push({ slotId, x, y, captureSeed })
   }
-  return { present: true, locks }
+  return { present: true, locks, unlockedDefaultSlotIds: [] }
 }
 
 /** Read `l=` from the current URL. */
 export function readLocksFromLocation(): LockListState {
-  if (typeof window === 'undefined') return { present: false, locks: [] }
+  if (typeof window === 'undefined') {
+    return { present: false, locks: [], unlockedDefaultSlotIds: [] }
+  }
   const url = new URL(window.location.href)
   const raw = url.searchParams.get('l')
-  if (raw === null) return { present: false, locks: [] }
-  return decodeLocks(raw)
+  const unlockedDefaultSlotIds = decodeSlotIdList(url.searchParams.get('u'))
+  if (raw === null) {
+    return {
+      present: unlockedDefaultSlotIds.length > 0,
+      locks: [],
+      unlockedDefaultSlotIds,
+    }
+  }
+  return { ...decodeLocks(raw), unlockedDefaultSlotIds }
 }
 
 /**
@@ -331,7 +357,7 @@ export function readLocksFromLocation(): LockListState {
 export function syncShareToLocation(
   place: Place,
   seed: number,
-  lockState?: { locks: LockEntry[] } | null,
+  lockState?: { locks: LockEntry[]; unlockedDefaultSlotIds?: string[] } | null,
   language = 'en',
   theme = 'playful',
 ): void {
@@ -339,16 +365,21 @@ export function syncShareToLocation(
   const url = new URL(window.location.href)
   const token = encodeShare(place, seed)
   const lToken = lockState ? encodeLocks(lockState.locks) : null
+  const uToken = lockState
+    ? encodeSlotIdList(lockState.unlockedDefaultSlotIds ?? [])
+    : null
   const langToken = language.trim().toLowerCase() || 'en'
   const themeToken = theme.trim().toLowerCase() || 'playful'
 
   const curSToken = url.searchParams.get('s')
   const curLToken = url.searchParams.get('l')
+  const curUToken = url.searchParams.get('u')
   const curLangToken = (url.searchParams.get('lang') ?? 'en').trim().toLowerCase()
   const curThemeToken = (url.searchParams.get('theme') ?? 'playful').trim().toLowerCase()
   if (
     curSToken === token &&
     (curLToken ?? null) === lToken &&
+    (curUToken ?? null) === (uToken || null) &&
     curLangToken === langToken &&
     curThemeToken === themeToken
   ) return
@@ -356,9 +387,9 @@ export function syncShareToLocation(
   url.searchParams.set('s', token)
   if (lToken !== null) url.searchParams.set('l', lToken)
   else url.searchParams.delete('l')
+  if (uToken) url.searchParams.set('u', uToken)
+  else url.searchParams.delete('u')
   url.searchParams.set('lang', langToken)
   url.searchParams.set('theme', themeToken)
-  // Clean up the legacy unlock-mask param if a previous version wrote it.
-  url.searchParams.delete('u')
   window.history.replaceState(null, '', url.toString())
 }

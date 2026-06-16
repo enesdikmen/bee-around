@@ -45,6 +45,8 @@ type PosterThemeId =
   | 'afterdark'
   | 'acidgarden'
 
+const DEFAULT_LOCK_SLOT_IDS = new Set(['title', 'sources'])
+
 interface Props {
   selectedPlace: Place
   onPlaceChange: (place: Place) => void
@@ -113,6 +115,9 @@ function BentoPoster({
   // Recently unlocked tiles stay visually frozen until the next Regenerate.
   // This keeps lock/unlock actions from swapping species immediately.
   const [unlockOverrides, setUnlockOverrides] = useState<Map<string, Lock>>(new Map())
+  const [unlockedDefaultSlotIds, setUnlockedDefaultSlotIds] = useState<Set<string>>(
+    () => new Set(initialLocks?.unlockedDefaultSlotIds ?? []),
+  )
   // True once the user has explicitly touched locks (added, removed, or
   // unlocked a default). Controls whether `l=` appears in the URL.
   const [userManagedLocks, setUserManagedLocks] = useState<boolean>(
@@ -247,6 +252,7 @@ function BentoPoster({
     placeKeyRef.current = key
     setLocks((prev) => (prev.size === 0 ? prev : new Map()))
     setUnlockOverrides((prev) => (prev.size === 0 ? prev : new Map()))
+    setUnlockedDefaultSlotIds((prev) => (prev.size === 0 ? prev : new Set()))
     setUserManagedLocks(false)
     setDidInitDefaultLocks(false)
     setPendingLocks(null)
@@ -265,6 +271,10 @@ function BentoPoster({
       })),
     [locks],
   )
+  const currentUnlockedDefaultSlotIds = useMemo(
+    () => Array.from(unlockedDefaultSlotIds),
+    [unlockedDefaultSlotIds],
+  )
 
   // Keep the address bar in sync with current place + seed + locks.
   // Skip while URL-restored locks are still pending — otherwise the
@@ -275,7 +285,12 @@ function BentoPoster({
   useEffect(() => {
     if (!selectedPlace) return
     if (pendingLocks !== null) return
-    const lockState = userManagedLocks ? { locks: currentLockEntries } : null
+    const lockState = userManagedLocks
+      ? {
+          locks: currentLockEntries,
+          unlockedDefaultSlotIds: currentUnlockedDefaultSlotIds,
+        }
+      : null
     syncShareToLocation(
       selectedPlace,
       posterSeed,
@@ -300,6 +315,7 @@ function BentoPoster({
     selectedPlace,
     posterSeed,
     currentLockEntries,
+    currentUnlockedDefaultSlotIds,
     userManagedLocks,
     pendingLocks,
     commonNameLanguage,
@@ -350,11 +366,20 @@ function BentoPoster({
     [placeName, latitude, longitude, displayData, posterSeed, selectedPlace, commonNameLanguage, uiText],
   )
 
-  // Default locks: title top-left, sources bottom-right.
-  // Applied only when URL did not provide those slots.
+  // Default locks: title top-left, sources bottom-right. A shared URL may
+  // restore custom locks while still relying on these implicit defaults; only
+  // skip a default slot when the URL records that the user unlocked it.
   const [didInitDefaultLocks, setDidInitDefaultLocks] = useState(false)
   useLayoutEffect(() => {
     if (didInitDefaultLocks) return
+    const urlExplicitlyClearedAllLocks =
+      initialLocks?.present &&
+      initialLocks.locks.length === 0 &&
+      (initialLocks.unlockedDefaultSlotIds?.length ?? 0) === 0
+    if (urlExplicitlyClearedAllLocks) {
+      setDidInitDefaultLocks(true)
+      return
+    }
     if (pendingLocks !== null) return
     if (baseTiles.length === 0) return
     // Prevent default-lock capture from a stale place snapshot.
@@ -370,11 +395,11 @@ function BentoPoster({
     let addedAny = false
     setLocks((prev) => {
       const next = new Map(prev)
-      if (title && !next.has('title')) {
+      if (title && !unlockedDefaultSlotIds.has('title') && !next.has('title')) {
         next.set('title', { tile: title, x: 0, y: 0, captureSeed })
         addedAny = true
       }
-      if (sources && !next.has('sources')) {
+      if (sources && !unlockedDefaultSlotIds.has('sources') && !next.has('sources')) {
         next.set('sources', {
           tile: sources,
           x: GRID_W - sources.w,
@@ -386,7 +411,7 @@ function BentoPoster({
       return addedAny ? next : prev
     })
     setDidInitDefaultLocks(true)
-  }, [pendingLocks, baseTiles, didInitDefaultLocks, posterSeed, GRID_W, committedSnapshot?.key, snapshotKey])
+  }, [pendingLocks, baseTiles, didInitDefaultLocks, initialLocks, unlockedDefaultSlotIds, posterSeed, GRID_W, committedSnapshot?.key, snapshotKey])
 
   // Restore URL locks one captureSeed at a time.
   // Missing slots at a seed are dropped with a dev warning.
@@ -642,6 +667,14 @@ function BentoPoster({
     // Unlock: keep the currently visible tile frozen until next Regenerate
     // so unlock itself does not swap species/content.
     if (isLockedNow) {
+      if (DEFAULT_LOCK_SLOT_IDS.has(slotId)) {
+        setUnlockedDefaultSlotIds((prev) => {
+          if (prev.has(slotId)) return prev
+          const next = new Set(prev)
+          next.add(slotId)
+          return next
+        })
+      }
       setUnlockOverrides((prev) => {
         const next = new Map(prev)
         next.set(slotId, { tile: t, x: p.x, y: p.y, captureSeed: posterSeed })
@@ -657,6 +690,14 @@ function BentoPoster({
     }
 
     // Lock: clear any temporary override and freeze exactly what is visible.
+    if (DEFAULT_LOCK_SLOT_IDS.has(slotId)) {
+      setUnlockedDefaultSlotIds((prev) => {
+        if (!prev.has(slotId)) return prev
+        const next = new Set(prev)
+        next.delete(slotId)
+        return next
+      })
+    }
     setUnlockOverrides((prev) => {
       if (!prev.has(slotId)) return prev
       const next = new Map(prev)
