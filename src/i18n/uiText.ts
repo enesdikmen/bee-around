@@ -12,8 +12,12 @@ export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']
 
 export type UiText = {
   toolbar: {
+    appTagline: string
+    displayOptions: string
     language: string
     languageAria: string
+    theme: string
+    about: string
     regenerate: string
     regenerateTitle: string
     share: string
@@ -85,6 +89,8 @@ export type UiText = {
     sourcesPublisher: string
     sourcesLicense: string
     sourcesReuseNote: string
+    openGbifDatasets: string
+    printFooter: string
     dataFrom: string
     scanQr: string
     thematic: {
@@ -106,8 +112,12 @@ export const normalizeUiLanguage = (language?: string | null): UiLanguage => {
 
 const englishText: UiText = {
   toolbar: {
+    appTagline: 'Biodiversity portraits',
+    displayOptions: 'Display options',
     language: 'Language',
     languageAria: 'Common names language',
+    theme: 'Theme',
+    about: 'About / Method',
     regenerate: 'Regenerate',
     regenerateTitle: 'Regenerate layout and data',
     share: 'Share',
@@ -187,6 +197,9 @@ const englishText: UiText = {
     sourcesLicense: 'License',
     sourcesReuseNote:
       'Search/place boundaries use OpenStreetMap Nominatim. The QR code reopens this Bee Around view; for formal reuse, review the linked GBIF dataset pages.',
+    openGbifDatasets: 'Open GBIF datasets page',
+    printFooter:
+      'Occurrence records, taxon names, counts, conservation signals, and top dataset metadata come from GBIF. Place search and boundaries use OpenStreetMap Nominatim. Scan the QR code or open this Bee Around view for dataset links, licenses, DOI details, and full attribution.',
     dataFrom: 'Data from',
     scanQr: 'Scan to open this poster',
     thematic: {
@@ -199,8 +212,12 @@ const englishText: UiText = {
 
 const frenchText: UiText = {
   toolbar: {
+    appTagline: 'Portraits de biodiversite',
+    displayOptions: "Options d'affichage",
     language: 'Langue',
     languageAria: 'Langue des noms communs',
+    theme: 'Theme',
+    about: 'A propos / Methode',
     regenerate: 'Regenerer',
     regenerateTitle: 'Regenerer la mise en page et les donnees',
     share: 'Partager',
@@ -280,6 +297,9 @@ const frenchText: UiText = {
     sourcesLicense: 'Licence',
     sourcesReuseNote:
       "Les limites de recherche et de lieu utilisent OpenStreetMap Nominatim. Le code QR rouvre cette vue Bee Around ; pour une reutilisation formelle, consultez les pages GBIF des jeux de donnees lies.",
+    openGbifDatasets: 'Ouvrir la page des jeux de donnees GBIF',
+    printFooter:
+      "Les occurrences, noms de taxons, totaux, signaux de conservation et metadonnees des principaux jeux de donnees proviennent de GBIF. La recherche de lieu et les limites utilisent OpenStreetMap Nominatim. Scannez le code QR ou ouvrez cette vue Bee Around pour les liens vers les jeux de donnees, les licences, les DOI et l'attribution complete.",
     dataFrom: 'Donnees de',
     scanQr: 'Scanner pour ouvrir cette affiche',
     thematic: {
@@ -292,8 +312,12 @@ const frenchText: UiText = {
 
 const spanishText: UiText = {
   toolbar: {
+    appTagline: 'Retratos de biodiversidad',
+    displayOptions: 'Opciones de visualizacion',
     language: 'Idioma',
     languageAria: 'Idioma de los nombres comunes',
+    theme: 'Tema',
+    about: 'Acerca de / Metodo',
     regenerate: 'Regenerar',
     regenerateTitle: 'Regenerar diseno y datos',
     share: 'Compartir',
@@ -373,6 +397,9 @@ const spanishText: UiText = {
     sourcesLicense: 'Licencia',
     sourcesReuseNote:
       'Los limites de busqueda y lugar usan OpenStreetMap Nominatim. El codigo QR vuelve a abrir esta vista de Bee Around; para reutilizacion formal, revisa las paginas enlazadas de conjuntos de datos de GBIF.',
+    openGbifDatasets: 'Abrir la pagina de datasets de GBIF',
+    printFooter:
+      'Los registros de ocurrencias, nombres de taxones, recuentos, senales de conservacion y metadatos de los principales conjuntos de datos provienen de GBIF. La busqueda de lugares y los limites usan OpenStreetMap Nominatim. Escanea el codigo QR o abre esta vista de Bee Around para enlaces de datasets, licencias, DOI y atribucion completa.',
     dataFrom: 'Datos de',
     scanQr: 'Escanear para abrir este poster',
     thematic: {
@@ -385,8 +412,12 @@ const spanishText: UiText = {
 
 const turkishText: UiText = {
   toolbar: {
+    appTagline: 'Biyoçeşitlilik portreleri',
+    displayOptions: 'Görünüm seçenekleri',
     language: 'Dil',
     languageAria: 'Yaygın ad dili',
+    theme: 'Tema',
+    about: 'Hakkında / Yöntem',
     regenerate: 'Yenile',
     regenerateTitle: 'Düzeni ve verileri yeniden oluştur',
     share: 'Paylaş',
@@ -466,6 +497,9 @@ const turkishText: UiText = {
     sourcesLicense: 'Lisans',
     sourcesReuseNote:
       'Arama/yer sınırları OpenStreetMap Nominatim kullanır. QR kodu bu Bee Around görünümünü yeniden açar; resmi yeniden kullanım için bağlantılı GBIF veri seti sayfalarını inceleyin.',
+    openGbifDatasets: 'GBIF veri setleri sayfasını aç',
+    printFooter:
+      'Oluşum kayıtları, takson adları, sayılar, koruma sinyalleri ve en önemli veri seti metadataları GBIF kaynaklıdır. Yer araması ve sınırlar OpenStreetMap Nominatim kullanır. Veri seti bağlantıları, lisanslar, DOI ayrıntıları ve tam atıf için QR kodunu tarayın veya bu Bee Around görünümünü açın.',
     dataFrom: 'Veri kaynağı',
     scanQr: 'Bu posteri açmak için tara',
     thematic: {
@@ -478,8 +512,12 @@ const turkishText: UiText = {
 
 const germanText: UiText = {
   toolbar: {
+    appTagline: 'Biodiversitatsportrats',
+    displayOptions: 'Anzeigeoptionen',
     language: 'Sprache',
     languageAria: 'Sprache der Trivialnamen',
+    theme: 'Design',
+    about: 'Info / Methode',
     regenerate: 'Neu generieren',
     regenerateTitle: 'Layout und Daten neu generieren',
     share: 'Teilen',
@@ -559,6 +597,9 @@ const germanText: UiText = {
     sourcesLicense: 'Lizenz',
     sourcesReuseNote:
       'Such- und Ortsgrenzen nutzen OpenStreetMap Nominatim. Der QR-Code offnet diese Bee Around Ansicht erneut; fur formelle Wiederverwendung bitte die verlinkten GBIF-Datensatzseiten prufen.',
+    openGbifDatasets: 'GBIF-Datensatzseite offnen',
+    printFooter:
+      'Vorkommensnachweise, Taxonnamen, Zahlen, Schutzsignale und Metadaten der wichtigsten Datensatze stammen von GBIF. Ortssuche und Grenzen nutzen OpenStreetMap Nominatim. Scannen Sie den QR-Code oder offnen Sie diese Bee Around Ansicht fur Datensatzlinks, Lizenzen, DOI-Details und vollstandige Attribution.',
     dataFrom: 'Daten von',
     scanQr: 'Scannen, um dieses Poster zu offnen',
     thematic: {
@@ -571,8 +612,12 @@ const germanText: UiText = {
 
 const italianText: UiText = {
   toolbar: {
+    appTagline: 'Ritratti della biodiversita',
+    displayOptions: 'Opzioni di visualizzazione',
     language: 'Lingua',
     languageAria: 'Lingua dei nomi comuni',
+    theme: 'Tema',
+    about: 'Informazioni / Metodo',
     regenerate: 'Rigenera',
     regenerateTitle: 'Rigenera layout e dati',
     share: 'Condividi',
@@ -652,6 +697,9 @@ const italianText: UiText = {
     sourcesLicense: 'Licenza',
     sourcesReuseNote:
       'I confini di ricerca e luogo usano OpenStreetMap Nominatim. Il codice QR riapre questa vista Bee Around; per il riuso formale, consulta le pagine GBIF dei dataset collegati.',
+    openGbifDatasets: 'Apri la pagina dei dataset GBIF',
+    printFooter:
+      "Record di occorrenza, nomi dei taxon, conteggi, segnali di conservazione e metadati dei principali dataset provengono da GBIF. Ricerca dei luoghi e confini usano OpenStreetMap Nominatim. Scansiona il codice QR o apri questa vista Bee Around per link ai dataset, licenze, dettagli DOI e attribuzione completa.",
     dataFrom: 'Dati da',
     scanQr: 'Scansiona per aprire questo poster',
     thematic: {
@@ -664,8 +712,12 @@ const italianText: UiText = {
 
 const portugueseText: UiText = {
   toolbar: {
+    appTagline: 'Retratos da biodiversidade',
+    displayOptions: 'Opcoes de exibicao',
     language: 'Idioma',
     languageAria: 'Idioma dos nomes comuns',
+    theme: 'Tema',
+    about: 'Sobre / Metodo',
     regenerate: 'Regenerar',
     regenerateTitle: 'Regenerar layout e dados',
     share: 'Compartilhar',
@@ -745,6 +797,9 @@ const portugueseText: UiText = {
     sourcesLicense: 'Licenca',
     sourcesReuseNote:
       'Limites de busca e lugar usam OpenStreetMap Nominatim. O codigo QR reabre esta visualizacao Bee Around; para reutilizacao formal, revise as paginas vinculadas dos conjuntos de dados do GBIF.',
+    openGbifDatasets: 'Abrir a pagina de conjuntos de dados do GBIF',
+    printFooter:
+      'Registros de ocorrencia, nomes de taxons, contagens, sinais de conservacao e metadados dos principais conjuntos de dados vêm do GBIF. Busca de lugar e limites usam OpenStreetMap Nominatim. Escaneie o codigo QR ou abra esta visualizacao Bee Around para links de conjuntos de dados, licencas, detalhes de DOI e atribuicao completa.',
     dataFrom: 'Dados de',
     scanQr: 'Escaneie para abrir este poster',
     thematic: {

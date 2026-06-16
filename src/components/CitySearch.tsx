@@ -16,6 +16,7 @@ interface Props {
   placeholder?: string
   language?: string
   text?: UiText['citySearch']
+  disabled?: boolean
 }
 
 export default function CitySearch({
@@ -24,6 +25,7 @@ export default function CitySearch({
   placeholder,
   language = 'en',
   text = getUiText(language).citySearch,
+  disabled = false,
 }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Place[]>([])
@@ -34,6 +36,13 @@ export default function CitySearch({
 
   // Debounced search.
   useEffect(() => {
+    if (disabled) {
+      setResults([])
+      setOpen(false)
+      setLoading(false)
+      setError(false)
+      return
+    }
     const q = query.trim()
     if (q.length < 2) {
       setResults([])
@@ -58,7 +67,7 @@ export default function CitySearch({
       clearTimeout(t)
       ctrl.abort()
     }
-  }, [language, query])
+  }, [disabled, language, query])
 
   // Close dropdown on outside click.
   useEffect(() => {
@@ -70,6 +79,7 @@ export default function CitySearch({
   }, [])
 
   function pick(p: Place) {
+    if (disabled) return
     onSelect(p)
     setQuery('')
     setResults([])
@@ -84,6 +94,7 @@ export default function CitySearch({
         className="city-search__input"
         type="text"
         value={query}
+        disabled={disabled}
         onChange={(e) => {
           setQuery(e.target.value)
           setOpen(true)
@@ -106,6 +117,7 @@ export default function CitySearch({
                 key={p.id}
                 type="button"
                 className="city-search__item"
+                disabled={disabled}
                 onClick={() => pick(p)}
                 role="option"
               >

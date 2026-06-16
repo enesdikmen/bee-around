@@ -182,7 +182,8 @@ function toThematicTileInstance(
     speciesIds: [sp.id],
     className:
       'bento-card bento-card--mini bento-card--thematic ' +
-      `${index % 2 === 0 ? 'accent-gold' : 'accent-forest'}`,
+      `${index % 2 === 0 ? 'accent-gold' : 'accent-forest'}` +
+      beeBuzzCardClass(sp),
     render: () => (
       <>
         {renderSpeciesImage({
@@ -191,6 +192,7 @@ function toThematicTileInstance(
           className: 'bento-mini__img',
           uiText,
         })}
+        {renderBeeChat(sp)}
         {renderSpeciesInfoButton(sp, { uiText, contextLine: thematicInfoLine(card.id, uiText) })}
         <span className="bento-mini__name">{sp.commonName}</span>
         <span className="bento-mini__sci">{sp.scientificName}</span>
@@ -262,6 +264,30 @@ const thematicInfoLine = (id: ThematicStripCard['id'], uiText: UiText) => {
     case 'nightCreatures':
       return uiText.poster.thematicInfo.nightCreatures
   }
+}
+
+const BEE_NAME_PATTERN =
+  /\b(bee|bees|bumblebee|bumblebees|honeybee|honeybees|mason bee|mining bee|leafcutter bee|sweat bee)\b/i
+const BEE_TAXON_PATTERN =
+  /\b(anthophila|apidae|apis|bombus|andrena|halictus|megachile|osmia|nomada|colletes|eucera|lasio?glossum|xylocopa|melipona)\b/i
+
+const isBeeSpecies = (
+  sp: Pick<SpeciesCard, 'commonName' | 'scientificName' | 'canonicalName'>,
+) => {
+  const commonName = sp.commonName ?? ''
+  const scientificName = `${sp.scientificName ?? ''} ${sp.canonicalName ?? ''}`
+  return BEE_NAME_PATTERN.test(commonName) || BEE_TAXON_PATTERN.test(scientificName)
+}
+
+const beeBuzzCardClass = (
+  sp: Pick<SpeciesCard, 'commonName' | 'scientificName' | 'canonicalName'>,
+) => (isBeeSpecies(sp) ? ' bento-card--bee-buzz' : '')
+
+const renderBeeChat = (
+  sp: Pick<SpeciesCard, 'commonName' | 'scientificName' | 'canonicalName'>,
+) => {
+  if (!isBeeSpecies(sp)) return null
+  return <span className="bento-bee-chat">hi cousin!</span>
 }
 
 const renderSpeciesInfoButton = (
@@ -736,7 +762,7 @@ export const CARD_DEFS: CardDef[] = [
           id: 'hero',
           slotId: 'hero',
           speciesIds: [hero.id],
-          className: `bento-card bento-card--hero accent-forest ${speciesPatternClass(hero)}`,
+          className: `bento-card bento-card--hero accent-forest ${speciesPatternClass(hero)}${beeBuzzCardClass(hero)}`,
           render: () => (
             <>
               {renderSpeciesInfoButton(hero, {
@@ -749,6 +775,7 @@ export const CARD_DEFS: CardDef[] = [
                 className: 'bento-hero__img',
                 uiText,
               })}
+              {renderBeeChat(hero)}
               <div className="bento-hero__body">
                 <h2 className="bento-hero__name">{hero.commonName}</h2>
                 <p className="bento-hero__sci">{hero.scientificName}</p>
@@ -775,7 +802,7 @@ export const CARD_DEFS: CardDef[] = [
         id: `sp-${sp.id}`,
         slotId: `mini-${idx}`,
         speciesIds: [sp.id],
-        className: `bento-card bento-card--mini accent-paper ${speciesPatternClass(sp)}`,
+        className: `bento-card bento-card--mini accent-paper ${speciesPatternClass(sp)}${beeBuzzCardClass(sp)}`,
         render: () => (
           <>
             {renderSpeciesImage({
@@ -784,6 +811,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
+            {renderBeeChat(sp)}
             {renderSpeciesInfoButton(sp, { uiText })}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
@@ -976,7 +1004,7 @@ export const CARD_DEFS: CardDef[] = [
         id: `at-risk-${i}`,
         slotId: `at-risk-${i}`,
         speciesIds: [sp.id],
-        className: 'bento-card bento-card--mini bento-card--at-risk accent-paper',
+        className: `bento-card bento-card--mini bento-card--at-risk accent-paper${beeBuzzCardClass(sp)}`,
         render: () => (
           <>
             {renderSpeciesImage({
@@ -985,6 +1013,7 @@ export const CARD_DEFS: CardDef[] = [
               className: 'bento-mini__img',
               uiText,
             })}
+            {renderBeeChat(sp)}
             {renderSpeciesInfoButton(sp, { uiText })}
             <span className="bento-mini__name">{sp.commonName}</span>
             <span className="bento-mini__sci">{sp.scientificName}</span>
@@ -1038,7 +1067,7 @@ export const CARD_DEFS: CardDef[] = [
           id: 'signature-species',
           slotId: 'signature-species',
           speciesIds: [sp.id],
-          className: 'bento-card bento-card--mini bento-card--signature accent-forest',
+          className: `bento-card bento-card--mini bento-card--signature accent-forest${beeBuzzCardClass(sp)}`,
           render: () => (
             <>
               {renderSpeciesImage({
@@ -1047,6 +1076,7 @@ export const CARD_DEFS: CardDef[] = [
                 className: 'bento-mini__img',
                 uiText,
               })}
+              {renderBeeChat(sp)}
               {renderSpeciesInfoButton(sp, { uiText })}
               <span className="bento-mini__ribbon bento-mini__ribbon--signature">
                 {uiText.poster.signatureRibbon(ratioLabel)}
@@ -1094,8 +1124,8 @@ export const CARD_DEFS: CardDef[] = [
                   href="https://www.gbif.org/dataset/search"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Open GBIF datasets page"
-                  title="Open GBIF datasets page"
+                  aria-label={uiText.poster.openGbifDatasets}
+                  title={uiText.poster.openGbifDatasets}
                 >
                   <img
                     src={gbifLogoSrc}
@@ -1245,7 +1275,7 @@ export function buildSpeciesBackupTiles(
       speciesIds: [sp.id],
       w: 1,
       h: 1,
-      className: `bento-card bento-card--mini accent-paper ${speciesPatternClass(sp)}`,
+      className: `bento-card bento-card--mini accent-paper ${speciesPatternClass(sp)}${beeBuzzCardClass(sp)}`,
       render: () => (
         <>
           {renderSpeciesImage({
@@ -1254,6 +1284,7 @@ export function buildSpeciesBackupTiles(
             className: 'bento-mini__img',
             uiText,
           })}
+          {renderBeeChat(sp)}
           {renderSpeciesInfoButton(sp, { uiText })}
           <span className="bento-mini__name">{sp.commonName}</span>
           <span className="bento-mini__sci">{sp.scientificName}</span>

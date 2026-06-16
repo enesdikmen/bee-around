@@ -15,22 +15,44 @@
  */
 
 export interface PrintPosterOptions {
-  /** Grid columns from the packer — used to size the @page rule. */
+  /** Grid columns from the packer — used to preserve the poster aspect ratio. */
   gridW: number
-  /** Grid rows from the packer — used to size the @page rule. */
+  /** Grid rows from the packer — used to preserve the poster aspect ratio. */
   gridH: number
   /** Place name; becomes the suggested PDF filename in Chrome. */
   placeName: string
-  /** Optional seed; appended to the filename so different shuffles save distinctly. */
+  /** Optional poster seed retained for compatibility with callers; not shown in filenames. */
   seed?: number
 }
 
-/** Longest physical edge of the printed page, in millimetres. */
-const PAGE_LONG_EDGE_MM = 420 // A3 long edge balances crisp export with responsive PDF viewing.
-/** Keep a tiny safety margin for browser print rounding quirks. */
-const PAGE_SAFE_MARGIN_MM = 2
-/** Visible canvas around the poster grid, matching the screen preview. */
-const PAGE_BACKGROUND_MARGIN_MM = 12
+/** ISO 216 A3 landscape, in millimetres. */
+const PAGE_SIZE_MM = {
+  width: 420,
+  height: 297,
+} as const
+/** Minimum visible canvas around the poster grid, matching the screen preview. */
+const PAGE_MIN_BACKGROUND_MARGIN_MM = 12
+
+function fitPosterPadding(gridW: number, gridH: number) {
+  const ratio = gridW / gridH
+  const availableW = PAGE_SIZE_MM.width - PAGE_MIN_BACKGROUND_MARGIN_MM * 2
+  const availableH = PAGE_SIZE_MM.height - PAGE_MIN_BACKGROUND_MARGIN_MM * 2
+  const availableRatio = availableW / availableH
+
+  if (ratio >= availableRatio) {
+    const contentH = availableW / ratio
+    return {
+      x: PAGE_MIN_BACKGROUND_MARGIN_MM,
+      y: (PAGE_SIZE_MM.height - contentH) / 2,
+    }
+  }
+
+  const contentW = availableH * ratio
+  return {
+    x: (PAGE_SIZE_MM.width - contentW) / 2,
+    y: PAGE_MIN_BACKGROUND_MARGIN_MM,
+  }
+}
 
 function sanitizeFilename(input: string): string {
   return (
@@ -42,28 +64,14 @@ function sanitizeFilename(input: string): string {
 }
 
 /**
- * Trigger the browser print dialog with a page size that exactly
- * matches the current poster aspect ratio, then clean up on
- * `afterprint`. Safe to call multiple times.
+ * Trigger the browser print dialog with a true A3 landscape page.
+ * The poster grid keeps its aspect ratio and any extra space becomes
+ * background canvas, so the PDF remains a standard physical size.
  */
 export function printPosterToPdf(opts: PrintPosterOptions): void {
-  const { gridW, gridH, placeName, seed } = opts
+  const { gridW, gridH, placeName } = opts
 
-  // Derive page dims from the grid aspect ratio so the printed sheet
-  // matches the on-screen poster exactly (no letterboxing, no crop).
-  const ratio = gridW / gridH
-  const longEdge = PAGE_LONG_EDGE_MM - PAGE_SAFE_MARGIN_MM * 2
-  const gridLongEdge = longEdge - PAGE_BACKGROUND_MARGIN_MM * 2
-  const [pageW, pageH] =
-    ratio >= 1
-      ? [
-          longEdge,
-          gridLongEdge / ratio + PAGE_BACKGROUND_MARGIN_MM * 2,
-        ]
-      : [
-          gridLongEdge * ratio + PAGE_BACKGROUND_MARGIN_MM * 2,
-          longEdge,
-        ]
+  const padding = fitPosterPadding(gridW, gridH)
 
   // Inject (or replace) the dynamic @page rule. Using a dedicated <style>
   // node keeps it isolated from the static print CSS and easy to remove.
@@ -73,16 +81,17 @@ export function printPosterToPdf(opts: PrintPosterOptions): void {
   style.id = STYLE_ID
   style.media = 'print'
   style.textContent = `
-    @page { size: ${pageW.toFixed(2)}mm ${pageH.toFixed(2)}mm; margin: 0; }
-    :root { --print-page-padding: ${PAGE_BACKGROUND_MARGIN_MM}mm; }
+    @page { size: ${PAGE_SIZE_MM.width}mm ${PAGE_SIZE_MM.height}mm; margin: 0; }
+    :root {
+      --print-page-padding-x: ${padding.x.toFixed(2)}mm;
+      --print-page-padding-y: ${padding.y.toFixed(2)}mm;
+    }
   `
   document.head.appendChild(style)
 
   // Title becomes the default filename in Chrome's Save-as-PDF dialog.
   const prevTitle = document.title
-  const filenameBase = sanitizeFilename(
-    `Bee Around — ${placeName}${seed != null ? ` (seed ${seed})` : ''}`,
-  )
+  const filenameBase = sanitizeFilename(`Bee Around - ${placeName}`)
   document.title = filenameBase
 
   const cleanup = () => {

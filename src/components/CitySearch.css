@@ -22,6 +22,11 @@
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 0 rgb(var(--color-ink));
 }
+.city-search__input:disabled {
+  opacity: 0.58;
+  transform: none;
+  box-shadow: 2px 2px 0 0 rgb(var(--color-ink) / 0.72);
+}
 
 .city-search__dropdown {
   position: absolute;
@@ -86,6 +91,9 @@
 }
 .city-search__item:last-of-type { border-bottom: 0; }
 .city-search__item:hover { background: rgb(var(--color-gold) / 0.3); }
+.city-search__item:disabled {
+  opacity: 0.55;
+}
 .city-search__name { font-weight: 900; font-size: 0.92rem; }
 .city-search__country { font-size: 0.78rem; color: rgb(var(--color-neutral-500)); }
 

@@ -96,7 +96,7 @@ function BentoPoster({
     closeLanguageMenu()
   }
 
-  const placeName = selectedPlace?.label?.split(',')[0]?.trim() ?? 'Pick a place'
+  const placeName = selectedPlace?.label?.split(',')[0]?.trim() ?? uiText.citySearch.pickCity
   const latitude = selectedPlace?.latitude
   const longitude = selectedPlace?.longitude
 
@@ -227,6 +227,13 @@ function BentoPoster({
   // unchanged so tiles update in place as new species images stream in.
   const isLoadingSnapshot =
     !displayData || committedSnapshot?.key !== snapshotKey || pendingLocks !== null
+  const isToolbarDisabled = isLoadingSnapshot
+
+  useEffect(() => {
+    if (!isToolbarDisabled) return
+    setIsThemeMenuOpen(false)
+    setIsLanguageMenuOpen(false)
+  }, [isToolbarDisabled])
 
   // Reset lock state when the place or image sources change.
   const placeKeyRef = useRef<string | null>(null)
@@ -300,6 +307,7 @@ function BentoPoster({
   ])
 
   const handleDownloadPdf = () => {
+    if (isToolbarDisabled) return
     printPosterToPdf({
       gridW: GRID_W,
       gridH,
@@ -670,11 +678,14 @@ function BentoPoster({
           onSelect={onPlaceChange}
           language={commonNameLanguage}
           text={uiText.citySearch}
+          disabled={isToolbarDisabled}
         />
         <button
           type="button"
           className="bento-toolbar__btn bento-toolbar__btn--primary"
+          disabled={isToolbarDisabled}
           onClick={() => {
+            if (isToolbarDisabled) return
             setUnlockOverrides((prev) => (prev.size === 0 ? prev : new Map()))
             setPosterSeed((s) => s + 1)
           }}
@@ -686,7 +697,7 @@ function BentoPoster({
           type="button"
           className="bento-toolbar__btn"
           onClick={handleDownloadPdf}
-          disabled={isLoadingSnapshot}
+          disabled={isToolbarDisabled}
           title={uiText.toolbar.pdfTitle}
         >
           ⤓ {uiText.toolbar.pdf}
@@ -695,8 +706,9 @@ function BentoPoster({
           <button
             type="button"
             className="bento-toolbar__icon-btn"
-            title="About / Method"
-            aria-label="About / Method"
+            title={uiText.toolbar.about}
+            aria-label={uiText.toolbar.about}
+            disabled={isToolbarDisabled}
             onClick={onShowAbout}
           >
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.9">
@@ -710,10 +722,11 @@ function BentoPoster({
           <button
             type="button"
             className="bento-toolbar__icon-btn bento-toolbar__icon-btn--theme"
-            title="Theme"
-            aria-label="Theme"
+            title={uiText.toolbar.theme}
+            aria-label={uiText.toolbar.theme}
             aria-haspopup="menu"
             aria-expanded={isThemeMenuOpen}
+            disabled={isToolbarDisabled}
             onClick={() =>
               setIsThemeMenuOpen((open) => {
                 const next = !open
@@ -726,7 +739,7 @@ function BentoPoster({
             <span className="bento-toolbar__theme-trigger-swatch" aria-hidden="true" />
           </button>
           {isThemeMenuOpen && (
-            <div className="bento-toolbar__theme-popover" role="menu" aria-label="Theme">
+            <div className="bento-toolbar__theme-popover" role="menu" aria-label={uiText.toolbar.theme}>
               {themeOptions.map((option) => {
                 const isActive = option.id === theme
                 return (
@@ -741,6 +754,7 @@ function BentoPoster({
                       'bento-toolbar__theme-option' +
                       (isActive ? ' bento-toolbar__theme-option--active' : '')
                     }
+                    disabled={isToolbarDisabled}
                     style={{ '--swatch': option.swatch } as React.CSSProperties}
                     onClick={() => selectTheme(option.id)}
                   />
@@ -757,6 +771,7 @@ function BentoPoster({
             aria-label={uiText.toolbar.languageAria}
             aria-haspopup="menu"
             aria-expanded={isLanguageMenuOpen}
+            disabled={isToolbarDisabled}
             onClick={() =>
               setIsLanguageMenuOpen((open) => {
                 const next = !open
@@ -786,6 +801,7 @@ function BentoPoster({
                       'bento-toolbar__menu-option' +
                       (isActive ? ' bento-toolbar__menu-option--active' : '')
                     }
+                    disabled={isToolbarDisabled}
                     onClick={() => selectLanguage(option.code)}
                   >
                     {option.label}
@@ -834,6 +850,7 @@ function BentoPoster({
                       title={isLocked ? uiText.toolbar.unlockCardTitle : uiText.toolbar.lockCardTitle}
                       aria-label={isLocked ? uiText.toolbar.unlockCard : uiText.toolbar.lockCard}
                       aria-pressed={isLocked}
+                      disabled={isLoadingSnapshot}
                     >
                       <svg viewBox="0 0 24 24" aria-hidden="true" width="17" height="17">
                         {isLocked ? (
@@ -886,12 +903,7 @@ function BentoPoster({
         )}
       </div>
       <p className="bento-print-footer" aria-hidden="true">
-        <span>
-          Occurrence records, taxon names, counts, conservation signals, and top dataset
-          metadata come from GBIF. Place search and boundaries use OpenStreetMap Nominatim.
-          Scan the QR code or open this Bee Around view for dataset links, licenses,
-          DOI details, and full attribution.
-        </span>
+        <span>{uiText.poster.printFooter}</span>
       </p>
     </div>
   )

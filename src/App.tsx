@@ -102,6 +102,7 @@ function App() {
   const [commonNameLanguage, setCommonNameLanguage] = useState<UiLanguage>(() =>
     normalizeUiLanguage(initialLanguage),
   )
+  const uiText = getUiText(commonNameLanguage)
 
   // Always canonicalize so the sharer's `place.id`/`label` match what a
   // receiver will reconstruct from the URL — this keeps seeded RNG keys
@@ -150,7 +151,7 @@ function App() {
           />
           <span className="app-brand__text">
             <span className="app-brand__name">Bee Around</span>
-            <span className="app-brand__tag">Biodiversity portraits</span>
+            <span className="app-brand__tag">{uiText.toolbar.appTagline}</span>
           </span>
         </button>
       </header>
@@ -221,13 +222,13 @@ function AppHeaderControls({
   }, [])
 
   return (
-    <div className="bento-toolbar app-header-controls" aria-label="Display options">
+    <div className="bento-toolbar app-header-controls" aria-label={uiText.toolbar.displayOptions}>
       <div className="bento-toolbar__menu" ref={themeMenuRef}>
         <button
           type="button"
           className="bento-toolbar__icon-btn bento-toolbar__icon-btn--theme"
-          title="Theme"
-          aria-label="Theme"
+          title={uiText.toolbar.theme}
+          aria-label={uiText.toolbar.theme}
           aria-haspopup="menu"
           aria-expanded={isThemeMenuOpen}
           onClick={() =>
@@ -242,7 +243,7 @@ function AppHeaderControls({
           <span className="bento-toolbar__theme-trigger-swatch" aria-hidden="true" />
         </button>
         {isThemeMenuOpen && (
-          <div className="bento-toolbar__theme-popover" role="menu" aria-label="Theme">
+          <div className="bento-toolbar__theme-popover" role="menu" aria-label={uiText.toolbar.theme}>
             {themeOptions.map((option) => {
               const isActive = option.id === theme
               return (

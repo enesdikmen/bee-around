@@ -21,6 +21,8 @@
     --print-grid-gap: 3.4mm;
     --print-grid-padding: 5.2mm;
     --print-page-padding: 12mm;
+    --print-page-padding-x: var(--print-page-padding);
+    --print-page-padding-y: var(--print-page-padding);
     --print-shadow: 1.45mm 1.45mm 0 0 rgb(var(--color-ink));
   }
 
@@ -56,7 +58,9 @@
      of letting the grid run edge-to-edge in the exported PDF. */
   .bento-shell {
     min-height: 0 !important;
-    padding: var(--print-page-padding) !important;
+    padding:
+      var(--print-page-padding-y)
+      var(--print-page-padding-x) !important;
     height: 100% !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
