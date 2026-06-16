@@ -2,7 +2,6 @@ import type {
   BreakdownItem,
   ConservationSnapshot,
   Place,
-  SpeciesCard,
 } from '../types/lens'
 
 export const places: Place[] = [
@@ -82,65 +81,6 @@ export const places: Place[] = [
     latitude: 38.3436365,
     longitude: -0.4881708,
     radiusKm: 40,
-  },
-]
-
-export const fallbackTopSpecies: SpeciesCard[] = [
-  {
-    id: 's1',
-    commonName: 'European Robin',
-    scientificName: 'Erithacus rubecula',
-    imageUrl: 'https://placehold.co/320x220/fed7aa/1f2937?text=Robin',
-    highlight: 'Peak in spring gardens',
-  },
-  {
-    id: 's2',
-    commonName: 'Great Tit',
-    scientificName: 'Parus major',
-    imageUrl: 'https://placehold.co/320x220/bbf7d0/1f2937?text=Great+Tit',
-    highlight: 'Top urban songbird',
-  },
-  {
-    id: 's3',
-    commonName: 'Common Swift',
-    scientificName: 'Apus apus',
-    imageUrl: 'https://placehold.co/320x220/bae6fd/1f2937?text=Swift',
-    highlight: 'Summer aerial flocks',
-  },
-  {
-    id: 's4',
-    commonName: 'European Hedgehog',
-    scientificName: 'Erinaceus europaeus',
-    imageUrl: 'https://placehold.co/320x220/fcd34d/1f2937?text=Hedgehog',
-    highlight: 'Night sightings rise',
-  },
-  {
-    id: 's5',
-    commonName: 'Mallard',
-    scientificName: 'Anas platyrhynchos',
-    imageUrl: 'https://placehold.co/320x220/fecaca/1f2937?text=Mallard',
-    highlight: 'Stable year-round',
-  },
-  {
-    id: 's6',
-    commonName: 'Small White',
-    scientificName: 'Pieris rapae',
-    imageUrl: 'https://placehold.co/320x220/c7d2fe/1f2937?text=Butterfly',
-    highlight: 'Summer peak',
-  },
-  {
-    id: 's7',
-    commonName: 'Common Frog',
-    scientificName: 'Rana temporaria',
-    imageUrl: 'https://placehold.co/320x220/a7f3d0/1f2937?text=Frog',
-    highlight: 'Wetland indicator',
-  },
-  {
-    id: 's8',
-    commonName: 'European Perch',
-    scientificName: 'Perca fluviatilis',
-    imageUrl: 'https://placehold.co/320x220/ddd6fe/1f2937?text=Perch',
-    highlight: 'Freshwater staple',
   },
 ]
 

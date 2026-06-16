@@ -4,13 +4,11 @@ import {
   fetchOccurrenceFacets,
   fetchSpecies,
 } from '../../api/gbif'
-import { fallbackTopSpecies } from '../../data/lensFallbacks'
 import {
   DEFAULT_PICK_FROM_TOP,
   EXTRA_MINI_SLOT_COUNT,
   EXTRA_MINI_SLOT_RULES,
   HERO_SLOT_RULES,
-  MAX_SPECIES_MINI_COUNT,
   MIN_COUNT_RATIO,
   MIN_VIABLE_CANDIDATES,
   type HeroSlotRule,
@@ -129,9 +127,9 @@ export const useTopSpeciesData = (
     staleTime: Infinity,
     gcTime: Infinity,
     // Share-link fidelity: hero/mini slots are deterministic only when
-    // this pool resolves successfully. Transient GBIF blips on a fresh
-    // tab would otherwise fall back to `fallbackTopSpecies`, changing
-    // every card on the poster.
+    // this pool resolves successfully. Transient GBIF blips on a fresh tab
+    // should not be hidden by static species; failed pools simply omit those
+    // cards and let the poster fill remaining cells with non-species fillers.
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   })
@@ -201,7 +199,7 @@ export const useTopSpeciesData = (
   )
 
   const topSpeciesData = useMemo(() => {
-    if (!slots.length) return fallbackTopSpecies
+    if (!slots.length) return []
 
     const pickUnseenForSlot = (
       candidates: SpeciesCard[],
@@ -243,22 +241,7 @@ export const useTopSpeciesData = (
       picks.push(chosen)
     }
 
-    // Backfill from fallback cards so mini slots can still render when local
-    // category data is sparse.
-    const minimumCount = 1 + MAX_SPECIES_MINI_COUNT
-    if (picks.length < minimumCount) {
-      for (const fallback of seededShuffle(
-        fallbackTopSpecies,
-        `${selectedPlace?.id ?? 'none'}:fallback-top-species:${contentSeed}`,
-      )) {
-        if (seen.has(fallback.id)) continue
-        seen.add(fallback.id)
-        picks.push(fallback)
-        if (picks.length >= minimumCount) break
-      }
-    }
-
-    return picks.length ? picks : fallbackTopSpecies
+    return picks
   }, [slots, extraMiniSlots, selectedPlace?.id, contentSeed])
 
   return {

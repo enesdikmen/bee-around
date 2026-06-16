@@ -4,6 +4,8 @@ Bee Around is powered mainly by GBIF-mediated biodiversity data, with place sear
 
 The poster shows patterns in available records. It should not be read as a complete inventory of nature, proof of current presence, or a local conservation assessment.
 
+Bee Around uses live GBIF API summaries and precomputed GBIF-derived baselines rather than creating a formal GBIF download for each poster. For formal reuse or publication, users should still follow GBIF download, dataset, and media citation guidance.
+
 ## Data Sources Used In The App
 
 ### GBIF Occurrence Search
@@ -67,7 +69,7 @@ https://api.gbif.org/v1/dataset/{uuid}
 The source workflow is:
 
 1. Get top dataset UUIDs from `facet=datasetKey`.
-2. Keep the top 3 by occurrence count in the selected place.
+2. Keep the top 5 by occurrence count in the selected place.
 3. Fetch dataset metadata.
 4. Store visible summaries with title, occurrence count, DOI, publisher, and license when available.
 
@@ -259,13 +261,13 @@ Contains:
 - `month`: global month counts;
 - `topSpeciesGlobal`: top 500 global species counts.
 
-It is used by runtime signature species. The current file has `totalRecords = 3,815,858,181` and 500 species rows.
+It is generated from GBIF occurrence facet queries in the precompute workflow, using global GBIF counts rather than a selected place. Runtime signature species uses it to compare a local species share against that species' global GBIF share. The current file has `totalRecords = 3,815,858,181` and 500 species rows.
 
 ### `comparison_precompute.json`
 
 Contains 477 curated rows: 195 countries and 282 cities. It was generated on 2026-05-12.
 
-The workflow is in [`precompute_comparison_sample.ipynb`](precompute_comparison_sample.ipynb). It can read `countries.csv` and `cities.csv` from `~/bee_around_precompute/`, caches Nominatim lookups, writes one checkpoint per place, and emits both `comparison_precompute.json` and `global_baseline.json`.
+The workflow is in [`precompute_comparison_sample.ipynb`](precompute_comparison_sample.ipynb). It can read `countries.csv` and `cities.csv` from `~/bee_around_precompute/`, caches Nominatim lookups, writes one checkpoint per place, and emits both `comparison_precompute.json` and `global_baseline.json`. Both shipped JSON files are derived from GBIF APIs, but they serve different runtime purposes: `comparison_precompute.json` powers peer percentile bars for curated city/country rows, while `global_baseline.json` powers live signature-species ratios for any searched place.
 
 For each row, the notebook:
 

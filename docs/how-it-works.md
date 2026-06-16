@@ -120,14 +120,14 @@ The app sorts each pool by count descending, then taxon key ascending. It keeps 
 
 ### Mini Species
 
-Mini species cards use the remaining `topSpeciesData` entries after the hero. The fixed layout renders up to 7 mini cards. Two extra mini slots are selected from underrepresented groups when available:
+Mini species cards use the remaining `topSpeciesData` entries after the hero. The fixed layout renders up to 7 mini cards when GBIF-derived candidates are available. Two extra mini slots are selected from underrepresented groups when available:
 
 - Reptile: `classKey=358`
 - Amphibian: `classKey=131`
 - Fish: `classKey=204`
 - Arachnid: `classKey=367`
 
-If the local data is too sparse, built-in fallback species can backfill the mini gallery so the grid remains complete.
+If the local data is too sparse for a species slot, that slot is skipped. Bee Around does not substitute static species into the gallery; empty poster space is handled by other eligible cards, backup GBIF-derived candidates, or neutral filler cells.
 
 ### Thematic Species
 
@@ -332,7 +332,7 @@ Bee Around ships with:
 - `comparison_precompute.json`: 477 rows, generated on 2026-05-12, with 195 countries and 282 cities.
 - `global_baseline.json`: global total record count, monthly counts, and top 500 global species counts.
 
-The reproducible workflow lives in [`precompute_comparison_sample.ipynb`](precompute_comparison_sample.ipynb). The notebook is checkpointed and writes its working files under `~/bee_around_precompute/` so longer runs can be interrupted and resumed.
+The reproducible workflow lives in [`precompute_comparison_sample.ipynb`](precompute_comparison_sample.ipynb). Both files are derived from GBIF API queries. The notebook is checkpointed and writes its working files under `~/bee_around_precompute/` so longer runs can be interrupted and resumed.
 
 Inputs and caches:
 
@@ -368,13 +368,14 @@ The unique-species count is paginated with `facet=speciesKey`, `facetLimit=1000`
 percentile = numberOfCohortValuesLessThanOrEqualToThisValue / cohortSize
 ```
 
-7. Computes precomputed signature species with the same share-ratio idea used at runtime:
+7. Builds `global_baseline.json` from global GBIF occurrence counts and the top 500 global species counts.
+8. Computes precomputed signature species with the same share-ratio idea used at runtime:
 
 ```text
 localShare / globalShare
 ```
 
-The notebook writes a full working output, but the app ships a slim runtime file. The current `src/comparison_precompute.json` rows contain `id`, `kind`, `place`, `percentiles`, and `signatureSpecies`; they do not include the full intermediate metric object. The runtime comparison card uses only the row lookup and percentiles. Runtime live signature species uses `global_baseline.json` directly so it can work for any searched place, not only curated precompute rows.
+The notebook writes a full working output, but the app ships a slim runtime file. The current `src/comparison_precompute.json` rows contain `id`, `kind`, `place`, `percentiles`, and `signatureSpecies`; they do not include the full intermediate metric object. The runtime comparison card uses only the row lookup and percentiles. Runtime live signature species uses `global_baseline.json` directly so it can work for any searched place, not only curated precompute rows. Both JSON files are used: `comparison_precompute.json` is for peer percentiles, and `global_baseline.json` is for local-vs-global species share ratios.
 
 ## Export And Print
 

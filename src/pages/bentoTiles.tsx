@@ -659,12 +659,9 @@ export const CARD_DEFS: CardDef[] = [
       // crowding the kingdom rows. This card now subsumes the old
       // standalone "How this place compares" tile.
       //
-      // NOTE: `uniqueSpecies` is intentionally omitted. The metric in the
-      // current `comparison_precompute.json` is saturated for ~94% of
-      // places (the precompute used `len(species_counts)` with a 1000-row
-      // facet cap). Once the notebook is rerun with paginated facet
-      // counts, add a `{ key: 'species', label: 'Species richness', pct:
-      // pcts.uniqueSpecies }` row to `ranks` below.
+      // NOTE: `uniqueSpecies` is available in the precomputed rows, but is
+      // intentionally omitted from this compact card so the visible comparison
+      // stays focused on recording intensity and conservation signal.
       const cmpRow = findComparisonRow(latitude, longitude)
       const pcts = cmpRow?.percentiles ?? null
       const cohortLabel = pcts?.cohort === 'city' ? uiText.poster.cities : uiText.poster.countries
