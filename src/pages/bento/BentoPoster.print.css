@@ -58,6 +58,7 @@
     min-height: 0 !important;
     padding: var(--print-page-padding) !important;
     height: 100% !important;
+    box-sizing: border-box !important;
     overflow: hidden !important;
     background:
       radial-gradient(ellipse at 50% 0%, rgb(var(--color-overlay-light) / 0.2) 0%, transparent 62%),
@@ -109,7 +110,7 @@
   }
 
   .bento-print-footer {
-    position: fixed !important;
+    position: absolute !important;
     left: 50% !important;
     bottom: 4.4mm !important;
     z-index: 3 !important;
@@ -118,14 +119,25 @@
     margin: 0 !important;
     padding-top: 1.25mm !important;
     border-top: 0.28mm solid rgb(var(--color-ink) / 0.22) !important;
+    background: transparent !important;
     color: rgb(var(--color-ink-soft)) !important;
-    font-family: var(--font-sans) !important;
+    font-family: var(--font-body) !important;
     font-size: 1.92mm !important;
     font-weight: 700 !important;
     letter-spacing: 0 !important;
     line-height: 1.32 !important;
     text-align: center !important;
     transform: translateX(-50%) !important;
+  }
+
+  .theme-afterdark .bento-print-footer {
+    border-top-color: rgb(var(--color-on-dark) / 0.42) !important;
+    color: rgb(var(--color-on-dark)) !important;
+  }
+
+  .theme-acidgarden .bento-print-footer {
+    border-top-color: rgb(var(--color-on-dark) / 0.42) !important;
+    color: rgb(var(--color-on-dark)) !important;
   }
 
   .bento-grid {

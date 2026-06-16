@@ -33,6 +33,7 @@ import type {
 } from '../types/lens'
 import type { SignatureSpeciesCard } from '../hooks/lensData/signatureSpecies'
 import { QRCodeSVG } from 'qrcode.react'
+import BentoTooltip from './bento/BentoTooltip'
 // NOTE: ~36 MB JSON; bundled into the main chunk for now. When this card
 // graduates from the prototype, switch to a slimmed runtime payload or a
 // dynamic import. The shape matches `precompute_comparison_sample.ipynb`.
@@ -287,69 +288,71 @@ const renderSpeciesInfoButton = (
       ? formatRatio(sp.overRepresentationRatio)
       : null
   const classes = ['bento-species-info', className].filter(Boolean).join(' ')
+  const panel = (
+    <>
+      <span className="bento-species-info__name">{sp.commonName}</span>
+      <span className="bento-species-info__sci">{sp.scientificName}</span>
+      {sp.taxonLine && (
+        <span className="bento-species-info__line">{sp.taxonLine}</span>
+      )}
+      {iucnLabel ? (
+        <span className="bento-species-info__line">{uiText.poster.iucnTooltip(iucnLabel)}</span>
+      ) : signatureRatio ? (
+        <span className="bento-species-info__line">
+          {uiText.poster.signatureTooltip(signatureRatio)}
+        </span>
+      ) : contextLine ? (
+        <span className="bento-species-info__line">{contextLine}</span>
+      ) : null}
+      <a
+        className="bento-species-info__taxon-link"
+        href={`https://www.gbif.org/species/${sp.id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(event) => event.currentTarget.blur()}
+      >
+        {uiText.poster.taxonLink}
+        <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
+      </a>
+      {photoLabel && (
+        <span className="bento-species-info__photo">
+          {photoTitle && sp.imageCredit?.sourceUrl ? (
+            <a
+              href={sp.imageCredit.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => event.currentTarget.blur()}
+            >
+              {photoTitle}
+              <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
+            </a>
+          ) : photoTitle ? (
+            <span>{photoTitle}</span>
+          ) : sp.imageCredit?.sourceUrl ? (
+            <a
+              href={sp.imageCredit.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(event) => event.currentTarget.blur()}
+            >
+              {uiText.poster.photoSourceLabel(photoLabel)}
+              <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
+            </a>
+          ) : (
+            <span>{uiText.poster.photoSourceLabel(photoLabel)}</span>
+          )}
+        </span>
+      )}
+    </>
+  )
 
   return (
-    <span
+    <BentoTooltip
       className={classes}
-      tabIndex={0}
-      aria-label={uiText.poster.speciesDetailsAria(sp.commonName)}
-    >
-      <span className="bento-species-info__panel" role="tooltip">
-        <span className="bento-species-info__name">{sp.commonName}</span>
-        <span className="bento-species-info__sci">{sp.scientificName}</span>
-        {sp.taxonLine && (
-          <span className="bento-species-info__line">{sp.taxonLine}</span>
-        )}
-        {iucnLabel ? (
-          <span className="bento-species-info__line">{uiText.poster.iucnTooltip(iucnLabel)}</span>
-        ) : signatureRatio ? (
-          <span className="bento-species-info__line">
-            {uiText.poster.signatureTooltip(signatureRatio)}
-          </span>
-        ) : contextLine ? (
-          <span className="bento-species-info__line">{contextLine}</span>
-        ) : null}
-        <a
-          className="bento-species-info__taxon-link"
-          href={`https://www.gbif.org/species/${sp.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(event) => event.currentTarget.blur()}
-        >
-          {uiText.poster.taxonLink}
-          <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
-        </a>
-        {photoLabel && (
-          <span className="bento-species-info__photo">
-            {photoTitle && sp.imageCredit?.sourceUrl ? (
-              <a
-                href={sp.imageCredit.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(event) => event.currentTarget.blur()}
-              >
-                {photoTitle}
-                <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
-              </a>
-            ) : photoTitle ? (
-              <span>{photoTitle}</span>
-            ) : sp.imageCredit?.sourceUrl ? (
-              <a
-                href={sp.imageCredit.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(event) => event.currentTarget.blur()}
-              >
-                {uiText.poster.photoSourceLabel(photoLabel)}
-                <span className="bento-species-info__external" aria-hidden="true">↗︎</span>
-              </a>
-            ) : (
-              <span>{uiText.poster.photoSourceLabel(photoLabel)}</span>
-            )}
-          </span>
-        )}
-      </span>
-    </span>
+      ariaLabel={uiText.poster.speciesDetailsAria(sp.commonName)}
+      panelClassName="bento-species-info__panel"
+      panel={panel}
+    />
   )
 }
 
@@ -364,53 +367,55 @@ const renderSourcesInfoButton = (
   },
 ) => {
   const datasets = data.datasetSummaries.slice(0, 5)
+  const panel = (
+    <>
+      <span className="bento-sources-info__title">{uiText.poster.sources}</span>
+      <span className="bento-sources-info__note">
+        {uiText.poster.sourcesDataNote}
+      </span>
+      {datasets.length > 0 && (
+        <span className="bento-sources-info__section">
+          <span className="bento-sources-info__heading">{uiText.poster.sourcesTopDatasets}</span>
+          {datasets.map((dataset) => {
+            const count = formatCount(dataset.occurrenceCount, language)
+            const meta = datasetMetaLine(dataset, uiText)
+            return (
+              <a
+                key={dataset.key}
+                className="bento-sources-info__dataset"
+                href={`https://www.gbif.org/dataset/${dataset.key}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(event) => event.currentTarget.blur()}
+              >
+                <span className="bento-sources-info__dataset-title">
+                  {dataset.title}
+                  <span className="bento-sources-info__external" aria-hidden="true">↗︎</span>
+                </span>
+                {count && (
+                  <span className="bento-sources-info__dataset-count">
+                    {uiText.poster.sourcesMatchingRecords(count)}
+                  </span>
+                )}
+                {meta && <span className="bento-sources-info__dataset-meta">{meta}</span>}
+              </a>
+            )
+          })}
+        </span>
+      )}
+      <span className="bento-sources-info__note">
+        {uiText.poster.sourcesReuseNote}
+      </span>
+    </>
+  )
 
   return (
-    <span
+    <BentoTooltip
       className="bento-sources-info"
-      tabIndex={0}
-      aria-label={`${uiText.poster.sources}: ${uiText.poster.sourcesAttributionAria}`}
-    >
-      <span className="bento-sources-info__panel" role="tooltip">
-        <span className="bento-sources-info__title">{uiText.poster.sources}</span>
-        <span className="bento-sources-info__note">
-          {uiText.poster.sourcesDataNote}
-        </span>
-        {datasets.length > 0 && (
-          <span className="bento-sources-info__section">
-            <span className="bento-sources-info__heading">{uiText.poster.sourcesTopDatasets}</span>
-            {datasets.map((dataset) => {
-              const count = formatCount(dataset.occurrenceCount, language)
-              const meta = datasetMetaLine(dataset, uiText)
-              return (
-                <a
-                  key={dataset.key}
-                  className="bento-sources-info__dataset"
-                  href={`https://www.gbif.org/dataset/${dataset.key}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(event) => event.currentTarget.blur()}
-                >
-                  <span className="bento-sources-info__dataset-title">
-                    {dataset.title}
-                    <span className="bento-sources-info__external" aria-hidden="true">↗︎</span>
-                  </span>
-                  {count && (
-                    <span className="bento-sources-info__dataset-count">
-                      {uiText.poster.sourcesMatchingRecords(count)}
-                    </span>
-                  )}
-                  {meta && <span className="bento-sources-info__dataset-meta">{meta}</span>}
-                </a>
-              )
-            })}
-          </span>
-        )}
-        <span className="bento-sources-info__note">
-          {uiText.poster.sourcesReuseNote}
-        </span>
-      </span>
-    </span>
+      ariaLabel={`${uiText.poster.sources}: ${uiText.poster.sourcesAttributionAria}`}
+      panelClassName="bento-sources-info__panel"
+      panel={panel}
+    />
   )
 }
 

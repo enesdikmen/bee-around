@@ -6,8 +6,10 @@
   position: relative;
   width: 100%;
   height: 100%;
+  border-radius: calc(var(--bento-card-radius) - var(--bento-card-border-width));
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .bento-title__text {
   position: relative;
@@ -170,6 +172,11 @@
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
+  border-radius:
+    calc(var(--bento-card-radius) - var(--bento-card-border-width))
+    calc(var(--bento-card-radius) - var(--bento-card-border-width))
+    0
+    0;
   object-fit: cover;
   object-position: center;
   background: rgb(var(--color-surface-soft-alt));
@@ -251,6 +258,11 @@
   width: 100%;
   aspect-ratio: 3 / 2;
   flex: 0 0 auto;
+  border-radius:
+    calc(var(--bento-card-radius) - var(--bento-card-border-width))
+    calc(var(--bento-card-radius) - var(--bento-card-border-width))
+    0
+    0;
   object-fit: cover;
   object-position: center;
   background: rgb(var(--color-surface-soft-alt));
@@ -510,7 +522,6 @@
 /* Species info hover/focus control. Replaces the old visible image-source
    badge while keeping the same photo source + credit text inside the panel. */
 .bento-card:has(.bento-species-info):hover {
-  overflow: visible;
   z-index: 20;
 }
 
@@ -519,7 +530,7 @@
   inset: 0;
   z-index: 1;
   outline: none;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .bento-species-info__panel {
@@ -570,6 +581,17 @@
 .bento-species-info--hero .bento-species-info__panel {
   left: 10px;
   max-width: 18rem;
+}
+
+.bento-tooltip-portal.bento-species-info__panel {
+  position: fixed;
+  top: auto;
+  bottom: auto;
+  left: 0;
+  z-index: 1000;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .bento-species-info__name {

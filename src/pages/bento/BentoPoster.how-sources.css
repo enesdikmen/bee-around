@@ -327,7 +327,6 @@
 .bento-card.bento-sources:has(.bento-sources-info):hover,
 .bento-card.bento-sources:has(.bento-sources-info:focus-visible),
 .bento-card.bento-sources:has(.bento-sources-info:focus-within) {
-  overflow: visible;
   z-index: 22;
 }
 
@@ -336,7 +335,7 @@
   inset: 0;
   z-index: 1;
   outline: none;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .bento-sources-info__panel {
@@ -373,6 +372,17 @@
 .bento-card.bento-sources:hover .bento-sources-info__panel,
 .bento-sources-info:focus-visible .bento-sources-info__panel,
 .bento-sources-info:focus-within .bento-sources-info__panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.bento-tooltip-portal.bento-sources-info__panel {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  left: 0;
+  z-index: 1000;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
