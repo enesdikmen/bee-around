@@ -707,7 +707,7 @@ const ABOUT_TEXT: Record<UiLanguage, AboutText> = {
 function AboutPage({ onBack, language }: Props) {
   const docsBaseUrl = 'https://github.com/enesdikmen/bee-around/blob/main'
   const developerImageSrc = `${import.meta.env.BASE_URL}me.jpeg`
-  const designerImageSrc = `${import.meta.env.BASE_URL}hasan.png`
+  const designerImageSrc = `${import.meta.env.BASE_URL}hasan1.jpeg`
   const text = ABOUT_TEXT[normalizeUiLanguage(language)]
 
   return (

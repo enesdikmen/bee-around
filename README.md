@@ -38,16 +38,35 @@ Country-scale bounding boxes, defined as at least 20 degrees of latitude or 40 d
 
 The poster also makes smaller facet queries for species-selection pools, IUCN buckets, threatened species, thematic species, and signature species. Details are in [How Bee Around works](docs/how-it-works.md) and [Data and attribution](docs/data-and-attribution.md).
 
-## GBIF Challenge Fit
+## Why Bee Around Exists
 
-Bee Around was built as a public-facing entry concept for the GBIF Ebbe Nielsen Challenge. The aim is to make GBIF-mediated biodiversity data legible, reusable, and shareable: a compact visual story of a place, with links and credits that point back to the underlying biodiversity network.
+GBIF makes a huge amount of biodiversity data available, but a first encounter
+with that data can still feel technical for people who are not already working
+inside biodiversity informatics. Bee Around is built for that first step. It
+starts with a familiar question, "what does open biodiversity data say about
+this place?", and turns the answer into a compact visual poster.
+
+The poster format is intentionally playful and approachable. Regenerate gives
+another view of the same place, card locks let people keep favorite findings,
+themes and language options make the output easier to adapt, and the browser
+print/PDF flow turns a digital view into a physical outreach object. The QR code
+on the poster reopens the same generated state, so a classroom poster, event
+handout, or local display can still lead viewers back to the interactive version
+with sources, credits, GBIF species links, and method notes.
+
+Bee Around is not a replacement for GBIF.org, formal occurrence downloads,
+dataset citation workflows, or expert biodiversity assessment. It is a bridge
+into them: a visual, shareable, and honest first glimpse of available
+GBIF-mediated records for a place.
 
 The project emphasizes:
 
-- approachability: poster cards instead of a data portal first;
+- access: place-first exploration instead of query parameters first;
+- outreach: posters, QR links, themes, language options, and print/PDF export;
 - transparency: visible caveats, source links, licenses, and GBIF taxon links;
-- repeatable exploration: seeded regeneration and share URLs;
-- public value: education, outreach, local biodiversity conversation, and quick demonstrations of open data.
+- repeatability: seeded regeneration, stateful URLs, and user-managed card locks;
+- public value: education, GBIF node communication, local biodiversity
+  conversation, and quick demonstrations of open data.
 
 ## Learn More
 

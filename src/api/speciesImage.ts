@@ -1,17 +1,3 @@
-/**
- * speciesImage — resolve a representative image for a GBIF species using
- * a configurable chain of sources. The resolver tries `sources` in order
- * and returns the first hit (or null).
- *
- * Sources:
- *   - 'wikidata'   : SPARQL P846 (GBIF taxon key) → P18 → Commons thumb.
- *   - 'inaturalist': iNat taxa search → default_photo.medium_url.
- *   - 'gbif'       : /species/{key}/media (first item with url).
- *
- * Cache shape: one Promise per (speciesKey, source) pair, kept for the
- * session. Each fetch runs to completion exactly once; the resolved value
- * (image or null) is the cached outcome — see the resolver section below.
- */
 import { fetchSpeciesMedia } from './gbif'
 
 export type ImageSource = 'wikidata' | 'inaturalist' | 'gbif'
@@ -119,11 +105,6 @@ const normalizeGbifMediaUrl = (input: string) => {
   if (hasBoundedImageHint(input)) return { url: input }
   return null
 }
-
-// ── Wikidata ──────────────────────────────────────────────────────
-// 1) SPARQL P846 (GBIF taxon key) → QID
-// 2) Special:EntityData → P18 (image) claim → Commons file name
-// 3) Commons API → thumbnail URLs + license metadata
 
 interface SparqlResponse {
   results: { bindings: Array<{ item: { value: string } }> }
