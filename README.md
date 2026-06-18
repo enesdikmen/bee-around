@@ -55,6 +55,13 @@ The project emphasizes:
 - [Data and attribution](docs/data-and-attribution.md)
 - [Precompute notebook](docs/precompute_comparison_sample.ipynb)
 
+## License
+
+Bee Around is open source under the [MIT License](LICENSE). The app uses
+third-party biodiversity records, place data, and species images; see
+[Data and attribution](docs/data-and-attribution.md) for source, license, and
+citation notes for those materials.
+
 ## Run Locally
 
 From this folder:
