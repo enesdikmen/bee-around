@@ -48,6 +48,20 @@
   );
   pointer-events: none;
 }
+.bento-title__alicante-heart {
+  position: absolute;
+  left: -0.52rem;
+  top: -0.38rem;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  line-height: 1;
+  color: rgb(var(--color-accent));
+  -webkit-text-stroke: 0.06em rgb(var(--color-ink));
+  paint-order: stroke fill;
+  text-shadow: 1px 1px 0 rgb(var(--color-paper));
+  pointer-events: none;
+}
 .bento-title__globe .globe__ocean {
   /* Deep ink ocean — gives strong contrast against gold land. */
   fill: rgb(var(--color-ink));
@@ -77,6 +91,7 @@
   fill: rgb(var(--color-paper));
 }
 .bento-title {
+  position: relative;
   margin: 0;
   line-height: 0.9;
   max-width: 100%;

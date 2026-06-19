@@ -78,6 +78,16 @@ type LensData = ReturnType<typeof useLensData>
 /** Fixed poster dimensions. Size selection is intentionally removed. */
 export const POSTER_GRID_W = 6
 export const POSTER_GRID_H = 4
+
+const isAlicantePlace = (
+  placeName: string,
+  latitude?: number,
+  longitude?: number,
+): boolean => {
+  if (placeName.toLocaleLowerCase().includes('alicante')) return true
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') return false
+  return Math.abs(latitude - 38.3436365) < 0.35 && Math.abs(longitude - -0.4881708) < 0.35
+}
 export const POSTER_GRID_AREA = POSTER_GRID_W * POSTER_GRID_H
 
 /** What `buildBentoTiles` hands to each card. Lean on purpose. */
@@ -591,25 +601,34 @@ export const CARD_DEFS: CardDef[] = [
     type: 'title',
     size: { w: 2, h: 1 },
     className: 'bento-card bento-card--title accent-gold',
-    build: ({ placeName, latitude, longitude, uiText }) => [
-      {
-        id: 'title',
-        slotId: 'title',
-        render: () => (
-          <div className="bento-title__layout">
-            {typeof latitude === 'number' && typeof longitude === 'number' && (
-              <Globe className="bento-title__globe" lat={latitude} lon={longitude} />
-            )}
-            <div className="bento-title__text">
-              <h1 className="bento-title">
-                <TitlePlaceName placeName={placeName} />
-                <span className="bento-title__sub">{uiText.poster.portraitTitle}</span>
-              </h1>
+    build: ({ placeName, latitude, longitude, uiText }) => {
+      const hasAlicanteHeart = isAlicantePlace(placeName, latitude, longitude)
+
+      return [
+        {
+          id: 'title',
+          slotId: 'title',
+          render: () => (
+            <div className="bento-title__layout">
+              {typeof latitude === 'number' && typeof longitude === 'number' && (
+                <Globe className="bento-title__globe" lat={latitude} lon={longitude} />
+              )}
+              <div className="bento-title__text">
+                <h1 className="bento-title">
+                  {hasAlicanteHeart && (
+                    <span className="bento-title__alicante-heart" aria-hidden="true">
+                      ♥
+                    </span>
+                  )}
+                  <TitlePlaceName placeName={placeName} />
+                  <span className="bento-title__sub">{uiText.poster.portraitTitle}</span>
+                </h1>
+              </div>
             </div>
-          </div>
-        ),
-      },
-    ],
+          ),
+        },
+      ]
+    },
   },
 
   {
