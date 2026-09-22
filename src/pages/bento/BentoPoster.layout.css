@@ -513,24 +513,30 @@ img[src=""] { visibility: hidden; }
 
 @media (max-width: 520px) {
   .bento-shell {
-    padding-top: 6.25rem;
+    /* The toolbar is fixed, and how many rows it wraps to depends on the
+       interface language — "Regenerate" is much wider in some of them — and on
+       whether the browser draws a classic scrollbar. Reserve room for the
+       worst case so it can never cover the top of the poster. */
+    padding-top: 9.75rem;
   }
 
   .bento-toolbar {
     align-items: flex-start;
     justify-content: flex-start;
-    gap: 0.4rem;
+    gap: 0.35rem;
+    /* Clears the brand mark, which drops its text label at this width. */
+    padding-left: 3.1rem;
   }
 
   .bento-toolbar__btn {
     font-size: 0.76rem;
-    padding: 0.46rem 0.66rem;
+    padding: 0.46rem 0.62rem;
     border-width: 2.5px;
   }
 
   .bento-toolbar__icon-btn {
-    width: 2.35rem;
-    height: 2.35rem;
+    width: 2.15rem;
+    height: 2.15rem;
     border-width: 2.5px;
   }
 }
