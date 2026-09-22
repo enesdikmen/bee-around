@@ -1,6 +1,6 @@
 # Bee Around
 
-![A Bee Around poster for Nairobi: a grid of cards showing species photos, record counts, seasonality, conservation status and data sources.](public/og.png)
+![A Bee Around poster for Nairobi: a grid of cards showing species photos, record counts, seasonality, conservation status and data sources.](public/og.jpg)
 
 **[Try it live →](https://enesdikmen.github.io/bee-around/)**
 
