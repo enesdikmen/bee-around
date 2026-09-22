@@ -119,6 +119,12 @@ function App() {
     }
   }, [])
 
+  // Keep <html lang> in step with the interface language so screen readers
+  // and browser translation pick the right language.
+  useEffect(() => {
+    document.documentElement.lang = commonNameLanguage
+  }, [commonNameLanguage])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
