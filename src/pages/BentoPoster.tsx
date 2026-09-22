@@ -12,6 +12,7 @@ import Loader from '../components/Loader'
 import { useLensData, type LensData } from '../hooks/useLensData'
 import { packWithRetries, type BoxSpec, type Placement } from '../lib/gridPacker'
 import { printPosterToPdf } from '../lib/printPoster'
+import { usePosterColumns } from '../hooks/usePosterColumns'
 import {
   getUiText,
   UI_LANGUAGES,
@@ -82,7 +83,10 @@ function BentoPoster({
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
   const uiText = getUiText(commonNameLanguage)
-  const GRID_W = POSTER_GRID_W
+  // Printing always renders the canonical wide poster, whatever the screen is.
+  const [forcePosterWide, setForcePosterWide] = useState(false)
+  const pendingPrintRef = useRef(false)
+  const GRID_W = usePosterColumns(forcePosterWide)
   const themeMenuRef = useRef<HTMLDivElement | null>(null)
   const languageMenuRef = useRef<HTMLDivElement | null>(null)
   const closeThemeMenu = () => setIsThemeMenuOpen(false)
@@ -324,13 +328,38 @@ function BentoPoster({
 
   const handleDownloadPdf = () => {
     if (isToolbarDisabled) return
+    // On a narrow viewport the poster is packed at 2 or 3 columns. Re-pack to
+    // the canonical width first and print from the effect below, once that
+    // layout has actually rendered.
+    if (GRID_W !== POSTER_GRID_W) {
+      pendingPrintRef.current = true
+      setForcePosterWide(true)
+      return
+    }
     printPosterToPdf({
-      gridW: GRID_W,
-      gridH,
+      gridW: POSTER_GRID_W,
+      gridH: POSTER_GRID_H,
       placeName,
       seed: posterSeed,
     })
   }
+
+  useEffect(() => {
+    if (!pendingPrintRef.current) return
+    if (!forcePosterWide || GRID_W !== POSTER_GRID_W) return
+    pendingPrintRef.current = false
+    const restoreNarrowLayout = () => {
+      setForcePosterWide(false)
+      window.removeEventListener('afterprint', restoreNarrowLayout)
+    }
+    window.addEventListener('afterprint', restoreNarrowLayout)
+    printPosterToPdf({
+      gridW: POSTER_GRID_W,
+      gridH: POSTER_GRID_H,
+      placeName,
+      seed: posterSeed,
+    })
+  }, [forcePosterWide, GRID_W, placeName, posterSeed])
 
   // Helper: build the unpadded tile list at a specific seed against a
   // given data snapshot. Used twice — once for current-seed unlocked
@@ -621,7 +650,7 @@ function BentoPoster({
         gridH: packCacheRef.current.gridH,
       }
     }
-    const h = POSTER_GRID_H
+    const h = POSTER_GRID_AREA / GRID_W
       // Hard pins are resolved against the *current* grid height attempt so
       // that e.g. `bottom-right` always means the actual bottom-right corner.
       const specs: BoxSpec[] = tiles.map((t) => {
@@ -648,7 +677,7 @@ function BentoPoster({
         packCacheRef.current = { key: cacheKey, placements: r.placements, gridH: h }
         return { placements: r.placements, gridH: h }
       }
-    return { placements: [], gridH: POSTER_GRID_H }
+    return { placements: [], gridH: POSTER_GRID_AREA / GRID_W }
   }, [tiles, posterSeed, GRID_W, didInitDefaultLocks])
 
   const placementById = useMemo(() => {
