@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use Bee Around, please cite it as below."
+title: "Bee Around"
+abstract: >-
+  Bee Around turns GBIF-mediated biodiversity records into playful, shareable
+  posters of places. It builds a bento-style poster for a city or country from
+  compact GBIF facet queries, covering species, seasonality, evidence types,
+  conservation signals and data sources, with a QR-backed share link that
+  reopens the same generated state.
+type: software
+authors:
+  - family-names: Dikmen
+    given-names: Enes
+  - family-names: Yalçınkaya
+    given-names: Hasan
+repository-code: "https://github.com/enesdikmen/bee-around"
+url: "https://enesdikmen.github.io/bee-around/"
+license: MIT
+keywords:
+  - biodiversity
+  - GBIF
+  - open data
+  - data visualization
+  - science outreach
+  - data literacy
