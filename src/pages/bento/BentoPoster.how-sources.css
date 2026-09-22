@@ -679,3 +679,14 @@
     width: min(82%, 7.2rem);
   }
 }
+
+/* Below 720px the poster re-packs to 2–3 columns (see usePosterColumns), so
+   the sightings card is tall again. The ranks are hidden at ≤900px for the
+   cramped 6-column layout; at these widths they fit, and without them the card
+   renders as a large empty panel. `margin-top: auto` on the base rule pushes
+   them to the bottom, which is what closes the gap. */
+@media screen and (max-width: 720px) {
+  .bento-sightings__ranks {
+    display: flex;
+  }
+}

@@ -797,3 +797,15 @@
   background-repeat: no-repeat;
   background-size: auto, var(--species-placeholder-icon-size, min(46%, 6rem)), auto;
 }
+
+/* Ribbons carry real content — conservation status, seasonality, signature
+   ratio — so they should not vanish on the devices most visitors use. They are
+   hidden at ≤1100px because each mini card was only ~137px wide there; the
+   re-packed 2–3 column layout below 720px gives them room again. */
+@media screen and (max-width: 720px) {
+  /* `block` is what the base rule already computes to: the element is inline
+     but absolutely positioned, which blockifies it. */
+  .bento-mini__ribbon {
+    display: block;
+  }
+}

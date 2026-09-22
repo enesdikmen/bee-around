@@ -385,12 +385,6 @@ img[src=""] { visibility: hidden; }
     transform: none;
   }
 }
-@media (max-width: 700px) {
-  /* On phones, drop the strict aspect ratio — let cards grow as tall as
-     content needs. Cells are no longer square but the layout still works. */
-  .bento-grid { aspect-ratio: auto !important; grid-auto-rows: minmax(110px, auto); }
-}
-
 /* ── Card base ────────────────────────────────────────── */
 .bento-card {
   --bento-card-radius: 12px;
@@ -486,24 +480,28 @@ img[src=""] { visibility: hidden; }
   }
 }
 
-@media (max-width: 720px) {
+@media screen and (max-width: 720px) {
   .bento-shell {
-    padding: 6.25rem 0 1rem;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-gutter: stable;
+    padding: 6.25rem 0.9rem 1.5rem;
+    overflow-x: hidden;
   }
 
   .bento-grid-wrap {
-    width: max(820px, 100vw);
-    padding: 0 0.9rem;
+    width: 100%;
   }
 
+  /* The poster re-packs to fewer columns at this width (see usePosterColumns),
+     so the grid fits the screen and scrolls vertically instead of sideways.
+     Rows size to their content rather than staying square, which would crop
+     the denser text cards. Scoped to `screen` so the print layout — which
+     always packs at the canonical width — is never affected. */
   .bento-grid {
-    width: 820px;
+    width: 100%;
     max-width: none;
-    margin: 0 auto;
-    aspect-ratio: 6 / 4 !important;
+    margin: 0;
+    aspect-ratio: auto !important;
+    grid-template-rows: none !important;
+    grid-auto-rows: minmax(8.5rem, auto);
   }
 }
 
@@ -521,15 +519,19 @@ img[src=""] { visibility: hidden; }
   .bento-toolbar {
     align-items: flex-start;
     justify-content: flex-start;
-  }
-
-  .bento-toolbar > .bento-toolbar__icon-btn,
-  .bento-toolbar > .bento-toolbar__menu {
-    display: none;
+    gap: 0.4rem;
   }
 
   .bento-toolbar__btn {
     font-size: 0.76rem;
+    padding: 0.46rem 0.66rem;
+    border-width: 2.5px;
+  }
+
+  .bento-toolbar__icon-btn {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-width: 2.5px;
   }
 }
 
