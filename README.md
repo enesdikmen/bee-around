@@ -1,5 +1,9 @@
 # Bee Around
 
+![A Bee Around poster for Nairobi: a grid of cards showing species photos, record counts, seasonality, conservation status and data sources.](public/og.png)
+
+**[Try it live →](https://enesdikmen.github.io/bee-around/)**
+
 Bee Around turns open biodiversity records into playful, shareable portraits of places. Pick a city or country-scale place and the app builds a bento poster showing what GBIF records reveal there: species, seasonality, record types, conservation signals, comparison context, data sources, photo credits, and a QR-backed share link.
 
 It is designed for people who want a friendly first step into biodiversity data: educators, students, outreach teams, GBIF nodes, local communities, challenge judges, and curious readers who may not normally open a data portal first.
@@ -73,6 +77,15 @@ The project emphasizes:
 - [How Bee Around works](docs/how-it-works.md)
 - [Data and attribution](docs/data-and-attribution.md)
 - [Precompute notebook](docs/precompute_comparison_sample.ipynb)
+
+## Status
+
+[![Project Status: Inactive](https://www.repostatus.org/badges/latest/inactive.svg)](https://www.repostatus.org/#inactive)
+
+Bee Around is complete and stable, but it is no longer actively developed. It
+runs entirely in the browser against public APIs, so it keeps working without
+maintenance — though an upstream API change could break it. Issues are open and
+the MIT license means anyone is free to fork it and carry it forward.
 
 ## License
 
