@@ -20,6 +20,8 @@ GET https://nominatim.openstreetmap.org/search
 
 The app sends the same language as the interface in `accept-language` and as an `Accept-Language` header. Results are deduplicated by normalized city name plus country. If both ordinary city and administrative-boundary variants appear for the same label, the administrative result is preferred because it usually gives a more useful area box.
 
+Search runs while the user types, 400 ms after the last keystroke. To respect the [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/), requests start at least 1 second apart, and TanStack Query caches each search (by language and query, ignoring case and extra spaces) for an hour after its last use, so retyping a city sends no new request. The policy does not allow autocomplete on the public server; moving to a provider that allows it (for example LocationIQ) is the planned fix if traffic grows.
+
 Each selected place stores:
 
 - `label`: short visible label such as `Munich, DE`;
@@ -54,7 +56,7 @@ Identical in-flight occurrence, species, and dataset requests share one promise.
 
 The queue itself only changes request timing. It never alters query parameters, response order, candidate pools, seeds, or the URL format. No persistent occurrence cache or background refresh is introduced. Repeatability still depends on the same upstream data and calendar month, as described below.
 
-Run `npm test` for the GBIF transport regression checks, including cooldowns, retry limits, concurrency, caching, language separation, and cancellation during shared requests.
+Run `npm test` for the GBIF and Nominatim transport regression checks, including cooldowns, retry limits, concurrency, caching, language separation, and cancellation during shared requests.
 
 ## Main Summary Query
 

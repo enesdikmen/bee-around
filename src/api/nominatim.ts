@@ -3,7 +3,9 @@
  *
  * Free public endpoint — no API key. Usage policy:
  *   https://operations.osmfoundation.org/policies/nominatim/
- * - max 1 req/sec, debounce on the caller side
+ * - max 1 req/sec: the caller debounces, and requests here start at least
+ *   1 s apart
+ * - cache results: the caller caches (CitySearch uses TanStack Query)
  * - send a Referer (browsers do this automatically)
  * - attribute "© OpenStreetMap contributors" if you display results
  *
@@ -13,6 +15,33 @@
 import type { Place, PlaceBBox } from '../types/lens'
 
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org'
+const MIN_REQUEST_INTERVAL_MS = 1000
+let lastRequestAt = -Infinity
+
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(new DOMException('The operation was aborted.', 'AbortError'))
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+
+// Only requests that are actually sent count, so a search cancelled by the
+// next keystroke does not delay later ones.
+const waitForTurn = async (signal?: AbortSignal) => {
+  for (;;) {
+    if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError')
+    const delay = lastRequestAt + MIN_REQUEST_INTERVAL_MS - Date.now()
+    if (delay <= 0) break
+    await sleep(delay, signal)
+  }
+  lastRequestAt = Date.now()
+}
 
 interface NominatimSearchResult {
   place_id: number
@@ -94,6 +123,8 @@ export async function searchCities(
 ): Promise<Place[]> {
   const q = query.trim()
   if (q.length < 2) return []
+
+  await waitForTurn(signal)
 
   const url = new URL(`${NOMINATIM_BASE}/search`)
   url.searchParams.set('format', 'json')

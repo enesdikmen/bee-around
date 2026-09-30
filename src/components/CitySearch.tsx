@@ -5,7 +5,9 @@
  * Stays in the `Place` shape the rest of the app already consumes.
  */
 import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { searchCities } from '../api/nominatim'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { getUiText, type UiText } from '../i18n/uiText'
 import type { Place } from '../types/lens'
 import './CitySearch.css'
@@ -28,46 +30,23 @@ export default function CitySearch({
   disabled = false,
 }: Props) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<Place[]>([])
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
-  // Debounced search.
-  useEffect(() => {
-    if (disabled) {
-      setResults([])
-      setOpen(false)
-      setLoading(false)
-      setError(false)
-      return
-    }
-    const q = query.trim()
-    if (q.length < 2) {
-      setResults([])
-      setLoading(false)
-      setError(false)
-      return
-    }
-    const ctrl = new AbortController()
-    const t = setTimeout(async () => {
-      setLoading(true)
-      setError(false)
-      try {
-        const places = await searchCities(q, { signal: ctrl.signal, language })
-        setResults(places)
-      } catch (err) {
-        if ((err as Error).name !== 'AbortError') setError(true)
-      } finally {
-        setLoading(false)
-      }
-    }, 400)
-    return () => {
-      clearTimeout(t)
-      ctrl.abort()
-    }
-  }, [disabled, language, query])
+  // Search once typing pauses. TanStack Query caches each search for an hour
+  // after its last use (Nominatim's policy asks clients to cache) and cancels
+  // a search that is still running when the text changes.
+  const term = query.trim().replace(/\s+/g, ' ')
+  const debouncedTerm = useDebouncedValue(term, 400)
+  const search = useQuery({
+    queryKey: ['citySearch', language, debouncedTerm.toLowerCase()],
+    queryFn: ({ signal }) => searchCities(debouncedTerm, { signal, language }),
+    enabled: !disabled && debouncedTerm.length >= 2,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60,
+  })
+  const results = search.data ?? []
+  const loading = search.isFetching || term !== debouncedTerm
 
   // Close dropdown on outside click.
   useEffect(() => {
@@ -82,7 +61,6 @@ export default function CitySearch({
     if (disabled) return
     onSelect(p)
     setQuery('')
-    setResults([])
     setOpen(false)
   }
 
@@ -103,15 +81,17 @@ export default function CitySearch({
         placeholder={selected ? buttonLabel : placeholder ?? text.placeholder}
         aria-label={text.ariaLabel}
       />
-      {open && query.trim().length >= 2 && (
+      {open && !disabled && term.length >= 2 && (
         <div className="city-search__dropdown" role="listbox">
           {loading && <div className="city-search__hint">{text.searching}</div>}
-          {error && <div className="city-search__hint city-search__hint--err">{text.failed}</div>}
-          {!loading && !error && results.length === 0 && (
+          {!loading && search.isError && (
+            <div className="city-search__hint city-search__hint--err">{text.failed}</div>
+          )}
+          {!loading && search.isSuccess && results.length === 0 && (
             <div className="city-search__hint">{text.noMatches}</div>
           )}
           {!loading &&
-            !error &&
+            search.isSuccess &&
             results.map((p) => (
               <button
                 key={p.id}
@@ -125,7 +105,11 @@ export default function CitySearch({
                 {p.country && <span className="city-search__country">{p.country}</span>}
               </button>
             ))}
-          <div className="city-search__attr">© OpenStreetMap contributors</div>
+          <div className="city-search__attr">
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+              © OpenStreetMap contributors
+            </a>
+          </div>
         </div>
       )}
     </div>

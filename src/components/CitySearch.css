@@ -111,3 +111,8 @@
   border-top: 2px solid rgb(var(--color-border-soft));
   background: rgb(var(--color-surface) / 0.98);
 }
+.city-search__attr a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

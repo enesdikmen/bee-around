@@ -201,7 +201,7 @@ const englishText: UiText = {
       'Search/place boundaries use OpenStreetMap Nominatim. The QR code reopens this Bee Around view; for formal reuse, review the linked GBIF dataset pages.',
     openGbifDatasets: 'Open GBIF datasets page',
     printFooter:
-      'Occurrence records, taxon names, counts, conservation signals, and top dataset metadata come from GBIF. Place search and boundaries use OpenStreetMap Nominatim. Scan the QR code or open this Bee Around view for dataset links, licenses, DOI details, and full attribution.',
+      'Occurrence records, taxon names, counts, conservation signals, and top dataset metadata come from GBIF. Place search and boundaries use OpenStreetMap Nominatim (© OpenStreetMap contributors, openstreetmap.org/copyright). Scan the QR code or open this Bee Around view for dataset links, licenses, DOI details, and full attribution.',
     dataFrom: 'Data from',
     scanQr: 'Scan to open this poster',
     thematic: {
@@ -302,7 +302,7 @@ const frenchText: UiText = {
       "Les limites de recherche et de lieu utilisent OpenStreetMap Nominatim. Le code QR rouvre cette vue Bee Around ; pour une réutilisation formelle, consultez les pages GBIF des jeux de données liés.",
     openGbifDatasets: 'Ouvrir la page des jeux de données GBIF',
     printFooter:
-      "Les occurrences, noms de taxons, totaux, signaux de conservation et métadonnées des principaux jeux de données proviennent de GBIF. La recherche de lieu et les limites utilisent OpenStreetMap Nominatim. Scannez le code QR ou ouvrez cette vue Bee Around pour les liens vers les jeux de données, les licences, les DOI et l'attribution complète.",
+      "Les occurrences, noms de taxons, totaux, signaux de conservation et métadonnées des principaux jeux de données proviennent de GBIF. La recherche de lieu et les limites utilisent OpenStreetMap Nominatim (© OpenStreetMap contributors, openstreetmap.org/copyright). Scannez le code QR ou ouvrez cette vue Bee Around pour les liens vers les jeux de données, les licences, les DOI et l'attribution complète.",
     dataFrom: 'Données de',
     scanQr: 'Scanner pour ouvrir cette affiche',
     thematic: {
@@ -403,7 +403,7 @@ const spanishText: UiText = {
       'Los límites de búsqueda y lugar usan OpenStreetMap Nominatim. El código QR vuelve a abrir esta vista de Bee Around; para reutilización formal, revisa las páginas enlazadas de conjuntos de datos de GBIF.',
     openGbifDatasets: 'Abrir la página de datasets de GBIF',
     printFooter:
-      'Los registros de ocurrencias, nombres de taxones, recuentos, señales de conservación y metadatos de los principales conjuntos de datos provienen de GBIF. La búsqueda de lugares y los límites usan OpenStreetMap Nominatim. Escanea el código QR o abre esta vista de Bee Around para enlaces de datasets, licencias, DOI y atribución completa.',
+      'Los registros de ocurrencias, nombres de taxones, recuentos, señales de conservación y metadatos de los principales conjuntos de datos provienen de GBIF. La búsqueda de lugares y los límites usan OpenStreetMap Nominatim (© OpenStreetMap contributors, openstreetmap.org/copyright). Escanea el código QR o abre esta vista de Bee Around para enlaces de datasets, licencias, DOI y atribución completa.',
     dataFrom: 'Datos de',
     scanQr: 'Escanear para abrir este póster',
     thematic: {
@@ -504,7 +504,7 @@ const turkishText: UiText = {
       'Arama/yer sınırları OpenStreetMap Nominatim kullanır. QR kodu bu Bee Around görünümünü yeniden açar; resmi yeniden kullanım için bağlantılı GBIF veri seti sayfalarını inceleyin.',
     openGbifDatasets: 'GBIF veri setleri sayfasını aç',
     printFooter:
-      'Oluşum kayıtları, takson adları, sayılar, koruma sinyalleri ve en önemli veri seti metadataları GBIF kaynaklıdır. Yer araması ve sınırlar OpenStreetMap Nominatim kullanır. Veri seti bağlantıları, lisanslar, DOI ayrıntıları ve tam atıf için QR kodunu tarayın veya bu Bee Around görünümünü açın.',
+      'Oluşum kayıtları, takson adları, sayılar, koruma sinyalleri ve en önemli veri seti metadataları GBIF kaynaklıdır. Yer araması ve sınırlar OpenStreetMap Nominatim (© OpenStreetMap contributors, openstreetmap.org/copyright) kullanır. Veri seti bağlantıları, lisanslar, DOI ayrıntıları ve tam atıf için QR kodunu tarayın veya bu Bee Around görünümünü açın.',
     dataFrom: 'Veri kaynağı',
     scanQr: 'Bu posteri açmak için tara',
     thematic: {
@@ -605,7 +605,7 @@ const germanText: UiText = {
       'Such- und Ortsgrenzen nutzen OpenStreetMap Nominatim. Der QR-Code öffnet diese Bee Around Ansicht erneut; für formelle Wiederverwendung bitte die verlinkten GBIF-Datensatzseiten prüfen.',
     openGbifDatasets: 'GBIF-Datensatzseite öffnen',
     printFooter:
-      'Vorkommensnachweise, Taxonnamen, Zahlen, Schutzsignale und Metadaten der wichtigsten Datensätze stammen von GBIF. Ortssuche und Grenzen nutzen OpenStreetMap Nominatim. Scannen Sie den QR-Code oder öffnen Sie diese Bee Around Ansicht für Datensatzlinks, Lizenzen, DOI-Details und vollständige Attribution.',
+      'Vorkommensnachweise, Taxonnamen, Zahlen, Schutzsignale und Metadaten der wichtigsten Datensätze stammen von GBIF. Ortssuche und Grenzen nutzen OpenStreetMap Nominatim (© OpenStreetMap contributors, openstreetmap.org/copyright). Scannen Sie den QR-Code oder öffnen Sie diese Bee Around Ansicht für Datensatzlinks, Lizenzen, DOI-Details und vollständige Attribution.',
     dataFrom: 'Daten von',
     scanQr: 'Scannen, um dieses Poster zu öffnen',
     thematic: {
@@ -706,7 +706,7 @@ const italianText: UiText = {
       'I confini di ricerca e luogo usano OpenStreetMap Nominatim. Il codice QR riapre questa vista Bee Around; per il riuso formale, consulta le pagine GBIF dei dataset collegati.',
     openGbifDatasets: 'Apri la pagina dei dataset GBIF',
     printFooter:
-      "Record di occorrenza, nomi dei taxon, conteggi, segnali di conservazione e metadati dei principali dataset provengono da GBIF. Ricerca dei luoghi e confini usano OpenStreetMap Nominatim. Scansiona il codice QR o apri questa vista Bee Around per link ai dataset, licenze, dettagli DOI e attribuzione completa.",
+      "Record di occorrenza, nomi dei taxon, conteggi, segnali di conservazione e metadati dei principali dataset provengono da GBIF. Ricerca dei luoghi e confini usano OpenStreetMap Nominatim (© OpenStreetMap contributors, openstreetmap.org/copyright). Scansiona il codice QR o apri questa vista Bee Around per link ai dataset, licenze, dettagli DOI e attribuzione completa.",
     dataFrom: 'Dati da',
     scanQr: 'Scansiona per aprire questo poster',
     thematic: {
@@ -807,7 +807,7 @@ const portugueseText: UiText = {
       'Limites de busca e lugar usam OpenStreetMap Nominatim. O código QR reabre esta visualização Bee Around; para reutilização formal, revise as páginas vinculadas dos conjuntos de dados do GBIF.',
     openGbifDatasets: 'Abrir a página de conjuntos de dados do GBIF',
     printFooter:
-      'Registros de ocorrência, nomes de táxons, contagens, sinais de conservação e metadados dos principais conjuntos de dados vêm do GBIF. Busca de lugar e limites usam OpenStreetMap Nominatim. Escaneie o código QR ou abra esta visualização Bee Around para links de conjuntos de dados, licenças, detalhes de DOI e atribuição completa.',
+      'Registros de ocorrência, nomes de táxons, contagens, sinais de conservação e metadados dos principais conjuntos de dados vêm do GBIF. Busca de lugar e limites usam OpenStreetMap Nominatim (© OpenStreetMap contributors, openstreetmap.org/copyright). Escaneie o código QR ou abra esta visualização Bee Around para links de conjuntos de dados, licenças, detalhes de DOI e atribuição completa.',
     dataFrom: 'Dados de',
     scanQr: 'Escaneie para abrir este pôster',
     thematic: {

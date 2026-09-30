@@ -83,7 +83,7 @@ Place search comes from:
 https://nominatim.openstreetmap.org/search
 ```
 
-Nominatim provides the selected label, point, country code, and bounding box. Bee Around displays OpenStreetMap attribution in search results. The selected boundary box becomes the default GBIF area filter.
+Nominatim provides the selected label, point, country code, and bounding box. Bee Around displays "© OpenStreetMap contributors" in the search results, linked to https://www.openstreetmap.org/copyright, and the printed poster footer includes the full `openstreetmap.org/copyright` URL. The selected boundary box becomes the default GBIF area filter.
 
 ### iNaturalist Images
 
