@@ -99,6 +99,20 @@
   color: rgb(var(--color-ink-soft) / 0.8);
   white-space: nowrap;
 }
+/* Shown instead of the bars when GBIF returned no monthly data. */
+.bento-season__empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.55rem 0 0;
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgb(var(--color-ink-soft) / 0.8);
+}
 
 /* ── Seasonality bar chart ─────────────────────────────── */
 .bento-season-bars {

@@ -266,6 +266,31 @@ test('persistent throttling has bounded exponential retries and failed responses
   assert.deepEqual(await retry, facetData)
 })
 
+test('server errors and dropped connections are retried once after a short wait', async (t) => {
+  const api = await freshApi()
+  const clock = virtualClock(t)
+  const starts = []
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    starts.push(clock.now())
+    const classKey = new URL(url).searchParams.get('classKey')
+    if (classKey === '1' && starts.length === 1) return response(503)
+    if (classKey === '2') throw new TypeError('Failed to fetch')
+    return response(200, facetData)
+  })
+  const recovered = api.fetchOccurrenceFacets({ ...facetRequest, classKey: 1 })
+  await clock.advance(999)
+  assert.equal(starts.length, 1)
+  await clock.advance(1)
+  assert.deepEqual(await recovered, facetData)
+  assert.deepEqual(starts, [0, 1000])
+
+  // A second failure is final, so the poster shows its empty state instead of waiting.
+  const failed = assert.rejects(api.fetchOccurrenceFacets({ ...facetRequest, classKey: 2 }), TypeError)
+  await clock.advance(1100)
+  await failed
+  assert.equal(starts.length, 4)
+})
+
 test('cancelling one shared caller does not cancel the pool needed by URL lock restoration', async (t) => {
   const api = await freshApi()
   const clock = virtualClock(t)

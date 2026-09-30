@@ -48,7 +48,7 @@ GET /occurrence/search?limit=0&facet=...
 
 The GBIF client allows up to 6 concurrent requests overall, including at most 3 occurrence searches. Occurrence searches initially start 100 ms apart. Species and dataset metadata can use spare capacity immediately, without waiting behind the search timer. This avoids search bursts while keeping metadata fast. This pace is a starting point, not a guaranteed GBIF allowance: GBIF changes its limits with server load. The queue is first-in, first-out, except that the six IUCN species-count searches are low priority. The poster does not wait for them, so they start after other queued searches, one at a time. The pace itself does not change. A poster needs about 21 distinct occurrence searches (a few more when a fallback filter or severity cascade is used).
 
-A `429` pauses all new GBIF requests in that browser tab, including retries. The queue honors `Retry-After` (seconds or an HTTP date), or uses exponential backoff when that header is unavailable, with a small random delay to spread retries. Each rate-limit wave also doubles the spacing for the affected request type (search or metadata), up to 1 second. After the cooldown, every 6 successful responses shorten the spacing by 20% until it returns to the starting pace. Each request still has at most 3 retries. Other tabs and devices have independent queues, so this cannot eliminate every rate limit.
+A `429` pauses all new GBIF requests in that browser tab, including retries. The queue honors `Retry-After` (seconds or an HTTP date), or uses exponential backoff when that header is unavailable, with a small random delay to spread retries. Each rate-limit wave also doubles the spacing for the affected request type (search or metadata), up to 1 second. After the cooldown, every 6 successful responses shorten the spacing by 20% until it returns to the starting pace. Each request still has at most 3 retries for `429`. A server error (`5xx`) or dropped connection is retried once after 1 second; other errors are not retried. Other tabs and devices have independent queues, so this cannot eliminate every rate limit.
 
 Identical in-flight occurrence, species, and dataset requests share one promise. Successful occurrence facet responses are cached for 30 minutes; species and dataset metadata are cached in memory for the session. A caller cancelling its wait does not cancel a shared request still needed by another caller, such as URL lock restoration. Failed responses are not cached.
 
@@ -82,7 +82,7 @@ It powers:
 - top datasets: top 3 `datasetKey` counts, resolved through `/dataset/{uuid}`;
 - evidence mix: `basisOfRecord` counts divided by total records.
 
-If month or kingdom data is missing, the app uses small built-in fallback data so the poster still renders. Live GBIF data is preferred whenever available.
+If this request fails or returns no month or kingdom data, the poster never substitutes example numbers: the total shows `—`, the kingdom list is hidden, and the month chart reads "Monthly data unavailable". The card keeps its place, so the layout of a shared poster does not change.
 
 ## Poster Cards
 

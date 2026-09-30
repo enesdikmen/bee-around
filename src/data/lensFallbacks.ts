@@ -1,7 +1,4 @@
-import type {
-  BreakdownItem,
-  Place,
-} from '../types/lens'
+import type { Place } from '../types/lens'
 
 export const places: Place[] = [
   {
@@ -81,18 +78,6 @@ export const places: Place[] = [
     longitude: -0.4881708,
     radiusKm: 40,
   },
-]
-
-export const fallbackSeasonality: number[] = [
-  18, 24, 32, 48, 68, 82, 74, 60, 44, 30, 22, 16,
-]
-
-export const fallbackKingdomBreakdown: BreakdownItem[] = [
-  { label: 'Animalia', count: 14800 },
-  { label: 'Plantae', count: 8200 },
-  { label: 'Fungi', count: 1600 },
-  { label: 'Chromista', count: 420 },
-  { label: 'Bacteria', count: 210 },
 ]
 
 export const IUCN_LABELS: Record<string, string> = {

@@ -950,24 +950,28 @@ export const CARD_DEFS: CardDef[] = [
                     </span>
                   </div>
                 )}
-                <div className="bento-season-bars" aria-label={uiText.poster.monthlyObservations}>
-                  {data.seasonalityData.map((val, i) => {
-                    const ratio = data.maxSeasonality > 0 ? val / data.maxSeasonality : 0
-                    const monthLabel = monthLabels[i] ?? MONTH[i]
-                    return (
-                      <div key={`m-${i}`} className="bento-season-bars__col">
-                        <div className="bento-season-bars__track">
-                          <div
-                            className="bento-season-bars__bar"
-                            style={{ height: `${Math.max(ratio * 100, 3)}%` }}
-                            title={`${monthLabel} · ${fmtCount(val)}`}
-                          />
+                {data.seasonalityData.length > 0 ? (
+                  <div className="bento-season-bars" aria-label={uiText.poster.monthlyObservations}>
+                    {data.seasonalityData.map((val, i) => {
+                      const ratio = data.maxSeasonality > 0 ? val / data.maxSeasonality : 0
+                      const monthLabel = monthLabels[i] ?? MONTH[i]
+                      return (
+                        <div key={`m-${i}`} className="bento-season-bars__col">
+                          <div className="bento-season-bars__track">
+                            <div
+                              className="bento-season-bars__bar"
+                              style={{ height: `${Math.max(ratio * 100, 3)}%` }}
+                              title={`${monthLabel} · ${fmtCount(val)}`}
+                            />
+                          </div>
+                          <span className="bento-season-bars__label">{monthLabel}</span>
                         </div>
-                        <span className="bento-season-bars__label">{monthLabel}</span>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="bento-season__empty">{uiText.poster.monthlyDataUnavailable}</p>
+                )}
                 {ys && (
                   <div className="bento-season__footer">
                     <span className="bento-season__chip">

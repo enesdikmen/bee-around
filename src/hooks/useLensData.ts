@@ -8,10 +8,6 @@ import {
 import {
   ALL_IMAGE_SOURCES,
 } from '../api/speciesImage'
-import {
-  fallbackKingdomBreakdown,
-  fallbackSeasonality,
-} from '../data/lensFallbacks'
 import type {
   DatasetSummary,
   Place,
@@ -70,7 +66,8 @@ export const useLensData = (
   }, [facetsQuery.data])
 
   const seasonalityData = useMemo(() => {
-    if (!facetsSummary?.month?.length) return fallbackSeasonality
+    // Empty means unavailable: never substitute example numbers.
+    if (!facetsSummary?.month?.length) return []
     const countsByMonth = facetsSummary.month.reduce<Record<number, number>>(
       (acc, item) => {
         const parsed = Number(item.name)
@@ -147,7 +144,7 @@ export const useLensData = (
   })
 
   const kingdomBreakdown = useMemo(() => {
-    if (!facetsSummary?.kingdomKey?.length) return fallbackKingdomBreakdown
+    if (!facetsSummary?.kingdomKey?.length) return []
     return facetsSummary.kingdomKey
       .slice(0, 5)
       .map((item) => {

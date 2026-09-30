@@ -1,6 +1,8 @@
 const GBIF_BASE_URL = 'https://api.gbif.org/v1'
 const GBIF_MAX_CONCURRENT_REQUESTS = 6
 const GBIF_MAX_429_RETRIES = 3
+// A 5xx or dropped connection is usually a one-off blip, so retry it once.
+const GBIF_MAX_FAILURE_RETRIES = 1
 const GBIF_RETRY_BACKOFF_MS = 1000
 // A concurrency cap alone still allows bursts when responses arrive quickly.
 // This is a starting pace, not a guaranteed GBIF allowance (limits vary with load).
@@ -40,6 +42,23 @@ let gbifCooldownUntil = 0
 
 const createAbortError = () =>
 	new DOMException('The operation was aborted.', 'AbortError')
+
+const wait = (ms: number, signal?: AbortSignal) =>
+	new Promise<void>((resolve, reject) => {
+		if (signal?.aborted) {
+			reject(createAbortError())
+			return
+		}
+		const onAbort = () => {
+			clearTimeout(timer)
+			reject(createAbortError())
+		}
+		const timer = setTimeout(() => {
+			signal?.removeEventListener('abort', onAbort)
+			resolve()
+		}, ms)
+		signal?.addEventListener('abort', onAbort, { once: true })
+	})
 
 const parseRetryAfterMs = (value: string | null) => {
 	if (!value) return null
@@ -373,10 +392,13 @@ const fetchJson = async <T>(url: string, options: RequestOptions = {}) => {
 	const lane = url.startsWith(`${GBIF_BASE_URL}/occurrence/search?`)
 		? gbifSearchLane
 		: gbifMetadataLane
-	for (let attempt = 0; attempt <= GBIF_MAX_429_RETRIES; attempt++) {
+	let rateLimitRetries = 0
+	let failureRetries = 0
+	for (;;) {
 		// Every attempt uses the same queue, including retries. A 429 pauses
 		// all new GBIF traffic in this tab, instead of just its own request.
 		await acquireGbifSlot(lane, options.queuePriority ?? 'normal', options.signal)
+		let failure: unknown
 		try {
 			if (options.signal?.aborted) throw createAbortError()
 
@@ -392,17 +414,24 @@ const fetchJson = async <T>(url: string, options: RequestOptions = {}) => {
 			}
 
 			if (response.status === 429) {
-				throttleGbifQueue(lane, response.headers.get('Retry-After'), attempt)
-				if (attempt < GBIF_MAX_429_RETRIES) continue
+				throttleGbifQueue(lane, response.headers.get('Retry-After'), rateLimitRetries)
+				if (rateLimitRetries++ < GBIF_MAX_429_RETRIES) continue
 			}
 
-			throw new Error(`GBIF request failed (${response.status}) for ${url}`)
+			failure = new Error(`GBIF request failed (${response.status}) for ${url}`)
+			if (response.status < 500) throw failure
+		} catch (error) {
+			// fetch rejects with a TypeError when the connection fails. Aborts,
+			// 4xx responses and spent 429 retries are final.
+			if (!(error instanceof TypeError)) throw error
+			failure = error
 		} finally {
 			releaseGbifSlot(lane)
 		}
-	}
 
-	throw new Error(`GBIF request failed (429) for ${url}`)
+		if (failureRetries++ >= GBIF_MAX_FAILURE_RETRIES) throw failure
+		await wait(GBIF_RETRY_BACKOFF_MS, options.signal)
+	}
 }
 
 export const fetchOccurrenceFacets = async ({

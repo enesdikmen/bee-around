@@ -74,6 +74,7 @@ export type UiText = {
     seasonality: string
     recordsSince: (year: number) => string
     monthlyObservations: string
+    monthlyDataUnavailable: string
     peakYear: (year: number, count: string) => string
     inLastDecade: (percent: number) => string
     evidenceMix: string
@@ -174,6 +175,7 @@ const englishText: UiText = {
     seasonality: 'Seasonality',
     recordsSince: (year) => `Records since ${year}`,
     monthlyObservations: 'Monthly observations',
+    monthlyDataUnavailable: 'Monthly data unavailable',
     peakYear: (year, count) => `Peak ${year}: ${count} obs`,
     inLastDecade: (percent) => `${percent}% in last decade`,
     evidenceMix: 'Evidence mix',
@@ -274,6 +276,7 @@ const frenchText: UiText = {
     seasonality: 'Saisonnalité',
     recordsSince: (year) => `Données depuis ${year}`,
     monthlyObservations: 'Observations mensuelles',
+    monthlyDataUnavailable: 'Données mensuelles indisponibles',
     peakYear: (year, count) => `Pic ${year}: ${count} obs`,
     inLastDecade: (percent) => `${percent}% sur la dernière décennie`,
     evidenceMix: 'Types de preuves',
@@ -374,6 +377,7 @@ const spanishText: UiText = {
     seasonality: 'Estacionalidad',
     recordsSince: (year) => `Registros desde ${year}`,
     monthlyObservations: 'Observaciones mensuales',
+    monthlyDataUnavailable: 'Datos mensuales no disponibles',
     peakYear: (year, count) => `Pico ${year}: ${count} obs`,
     inLastDecade: (percent) => `${percent}% en la última década`,
     evidenceMix: 'Mezcla de evidencias',
@@ -474,6 +478,7 @@ const turkishText: UiText = {
     seasonality: 'Mevsimsellik',
     recordsSince: (year) => `${year} yılından beri kayıtlar`,
     monthlyObservations: 'Aylık gözlemler',
+    monthlyDataUnavailable: 'Aylık veri mevcut değil',
     peakYear: (year, count) => `Zirve ${year}: ${count} gözlem`,
     inLastDecade: (percent) => `son on yılda %${percent}`,
     evidenceMix: 'Kanıt karışımı',
@@ -574,6 +579,7 @@ const germanText: UiText = {
     seasonality: 'Saisonalität',
     recordsSince: (year) => `Nachweise seit ${year}`,
     monthlyObservations: 'Monatliche Beobachtungen',
+    monthlyDataUnavailable: 'Monatsdaten nicht verfügbar',
     peakYear: (year, count) => `Höchstwert ${year}: ${count} Beob.`,
     inLastDecade: (percent) => `${percent}% im letzten Jahrzehnt`,
     evidenceMix: 'Evidenzmix',
@@ -674,6 +680,7 @@ const italianText: UiText = {
     seasonality: 'Stagionalità',
     recordsSince: (year) => `Dati dal ${year}`,
     monthlyObservations: 'Osservazioni mensili',
+    monthlyDataUnavailable: 'Dati mensili non disponibili',
     peakYear: (year, count) => `Picco ${year}: ${count} oss.`,
     inLastDecade: (percent) => `${percent}% nell'ultimo decennio`,
     evidenceMix: 'Mix di evidenze',
@@ -774,6 +781,7 @@ const portugueseText: UiText = {
     seasonality: 'Sazonalidade',
     recordsSince: (year) => `Registros desde ${year}`,
     monthlyObservations: 'Observações mensais',
+    monthlyDataUnavailable: 'Dados mensais indisponíveis',
     peakYear: (year, count) => `Pico ${year}: ${count} obs`,
     inLastDecade: (percent) => `${percent}% na última década`,
     evidenceMix: 'Mistura de evidências',
