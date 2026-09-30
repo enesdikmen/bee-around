@@ -26,7 +26,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchOccurrenceFacets, fetchSpecies } from '../../api/gbif'
 import type { Place, SpeciesCard } from '../../types/lens'
-import { placeGeoParams } from './shared'
+import { facetCounts, placeSummaryRequest } from './shared'
 import globalBaselineRaw from '../../global_baseline.json'
 
 type GlobalBaseline = {
@@ -53,7 +53,6 @@ const MIN_RATIO = 1.5
 const FINAL_POOL_SIZE = 3
 /** How deep we inspect the scored list before applying class-diversity. */
 const METADATA_CANDIDATE_POOL = 15
-const FACET_LIMIT = 500
 
 export type SignatureSpeciesCard = SpeciesCard & {
   /** localShare / globalShare. >1 means over-represented vs the world. */
@@ -83,16 +82,15 @@ export const useLiveSignatureSpecies = (
     queryFn: async ({ signal }): Promise<ScoredSignatureCandidate[]> => {
       if (!selectedPlace || GLOBAL_TOTAL <= 0) return []
 
+      // Shared with the place summary query (speciesKey facet limit 500).
       const facetResp = await fetchOccurrenceFacets({
-        ...placeGeoParams(selectedPlace),
-        facetFields: ['speciesKey'],
-        facetLimit: FACET_LIMIT,
+        ...placeSummaryRequest(selectedPlace),
         signal,
       })
 
       const localTotal = facetResp.count ?? 0
       if (localTotal < MIN_LOCAL_TOTAL) return []
-      const counts = facetResp.facets?.[0]?.counts ?? []
+      const counts = facetCounts(facetResp, 'speciesKey')
       if (counts.length === 0) return []
 
       const scored: ScoredSignatureCandidate[] = []

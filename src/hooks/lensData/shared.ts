@@ -1,3 +1,4 @@
+import type { FacetField, OccurrenceFacetResponse } from '../../api/gbif'
 import type { Place } from '../../types/lens'
 
 /** Build GBIF geo params from a Place, preferring Nominatim bbox when present. */
@@ -8,6 +9,34 @@ export const placeGeoParams = (place: Place) => ({
   bbox: place.bbox,
   countryCode: place.countryCode,
 })
+
+/**
+ * One request serves both the place summary (seasonality, years, datasets,
+ * kingdoms, evidence mix) and the signature-species pool. Both hooks must
+ * build it here so the URLs match and GBIF is queried once.
+ */
+export const placeSummaryRequest = (place: Place) => ({
+  ...placeGeoParams(place),
+  facetFields: [
+    'month',
+    'year',
+    'datasetKey',
+    'kingdomKey',
+    'basisOfRecord',
+    'speciesKey',
+  ] as FacetField[],
+  facetLimit: 300,
+  facetLimits: { speciesKey: 500 },
+})
+
+/** Facet counts by field name; GBIF returns names like `SPECIES_KEY`. */
+export const facetCounts = (response: OccurrenceFacetResponse, field: FacetField) => {
+  const normalize = (value: string) => value.replace(/_/g, '').toLowerCase()
+  return (
+    response.facets.find((facet) => normalize(facet.field) === normalize(field))
+      ?.counts ?? []
+  )
+}
 
 const hashText = (value: string) => {
   let hash = 2166136261

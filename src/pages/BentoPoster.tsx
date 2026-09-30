@@ -47,6 +47,11 @@ type PosterThemeId =
   | 'acidgarden'
 
 const DEFAULT_LOCK_SLOT_IDS = new Set(['title', 'sources'])
+// Locked slots whose content stays live; only their position is frozen.
+// Both show place-level data that no seed changes. The sightings card's
+// red-list numbers arrive after the poster is shown, so a frozen copy could
+// keep the loading placeholder.
+const LIVE_LOCKED_SLOT_IDS = new Set(['sources', 'sightings'])
 
 interface Props {
   selectedPlace: Place
@@ -531,9 +536,9 @@ function BentoPoster({
     for (const t of baseTiles) {
       if (t.slotId && lockedSlotIds.has(t.slotId)) {
         const lock = locks.get(t.slotId)!
-        // Keep sources content live (QR/data text) while preserving its
-        // locked position. Other locked slots stay fully frozen.
-        if (t.slotId === 'sources') {
+        // Keep live slots current while preserving their locked position.
+        // Other locked slots stay fully frozen.
+        if (LIVE_LOCKED_SLOT_IDS.has(t.slotId)) {
           merged.push({ ...t, pinXY: { x: lock.x, y: lock.y } })
         } else {
           merged.push({ ...lock.tile, pinXY: { x: lock.x, y: lock.y } })

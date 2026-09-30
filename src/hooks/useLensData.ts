@@ -20,7 +20,7 @@ import { useConservationSnapshot } from './lensData/conservation'
 import { dedupeSpeciesAcrossLenses } from './lensData/dedupe'
 import { useLensImageOverlay } from './lensData/imageOverlay'
 import { buildRecordsBreakdown } from './lensData/recordsBreakdown'
-import { placeGeoParams } from './lensData/shared'
+import { facetCounts, placeSummaryRequest } from './lensData/shared'
 import { useThematicLensData } from './lensData/thematic'
 import { useTopSpeciesData } from './lensData/topSpecies'
 import { useLiveSignatureSpecies } from './lensData/signatureSpecies'
@@ -49,16 +49,8 @@ export const useLensData = (
     queryFn: ({ signal }) =>
       fetchOccurrenceFacets({
         ...(activePlace
-          ? placeGeoParams(activePlace)
-          : { latitude: 0, longitude: 0, radiusKm: 0 }),
-        facetFields: [
-          'month',
-          'year',
-          'datasetKey',
-          'kingdomKey',
-          'basisOfRecord',
-        ],
-        facetLimit: 300,
+          ? placeSummaryRequest(activePlace)
+          : { latitude: 0, longitude: 0, radiusKm: 0, facetFields: [] }),
         signal,
       }),
     enabled: enabled && Boolean(activePlace),
@@ -66,28 +58,14 @@ export const useLensData = (
   })
 
   const facetsSummary = useMemo(() => {
-    if (!facetsQuery.data) return null
-
-    const normalizeField = (value: string) =>
-      value.replace(/_/g, '').toLowerCase()
-
-    const facetsByField = facetsQuery.data.facets.reduce(
-      (acc, facet) => {
-        acc[normalizeField(facet.field)] = facet
-        return acc
-      },
-      {} as Record<string, { counts: { name: string; count: number }[] }>,
-    )
-
-    const getCounts = (field: string) =>
-      facetsByField[normalizeField(field)]?.counts ?? []
-
+    const data = facetsQuery.data
+    if (!data) return null
     return {
-      month: getCounts('month'),
-      year: getCounts('year'),
-      datasetKey: getCounts('datasetKey'),
-      kingdomKey: getCounts('kingdomKey'),
-      basisOfRecord: getCounts('basisOfRecord'),
+      month: facetCounts(data, 'month'),
+      year: facetCounts(data, 'year'),
+      datasetKey: facetCounts(data, 'datasetKey'),
+      kingdomKey: facetCounts(data, 'kingdomKey'),
+      basisOfRecord: facetCounts(data, 'basisOfRecord'),
     }
   }, [facetsQuery.data])
 

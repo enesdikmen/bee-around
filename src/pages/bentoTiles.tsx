@@ -663,7 +663,10 @@ export const CARD_DEFS: CardDef[] = [
         isCapped: statuses.some(isIucnCapped),
         color,
       })
-      const iucnBuckets = snap.totalAssessedSpecies > 0
+      // Counts arrive after the poster is shown: keep the pills in place
+      // with a placeholder until then, and hide them if the counts failed.
+      const isIucnPending = snap.countsStatus === 'pending'
+      const iucnBuckets = isIucnPending || snap.totalAssessedSpecies > 0
         ? [
             makeIucnBucket(uiText.poster.doingWell, ['LC'], 'rgb(var(--color-state-success))'),
             makeIucnBucket(uiText.poster.watchList, ['NT', 'DD'], 'rgb(var(--color-state-warning))'),
@@ -715,14 +718,16 @@ export const CARD_DEFS: CardDef[] = [
                 </ul>
               )}
               {iucnBuckets.length > 0 && (
-                <div className="bento-sightings__iucn">
+                <div className="bento-sightings__iucn" aria-busy={isIucnPending}>
                   <span className="bento-sightings__iucn-head">{uiText.poster.iucnRedList}</span>
                   <div className="bento-sightings__iucn-pills">
                     {iucnBuckets.map((b) => (
                       <span key={b.label} className="bento-sightings__iucn-pill">
                         <span className="bento-sightings__iucn-dot" style={{ background: b.color }} />
                         <span className="bento-sightings__iucn-count">
-                          {b.count.toLocaleString(language)}{b.isCapped ? '+' : ''}
+                          {isIucnPending
+                            ? '…'
+                            : `${b.count.toLocaleString(language)}${b.isCapped ? '+' : ''}`}
                         </span>
                         <span className="bento-sightings__iucn-label">{b.label}</span>
                       </span>

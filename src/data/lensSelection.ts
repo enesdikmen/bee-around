@@ -42,6 +42,12 @@ export type HeroSlotRule = {
 export const DEFAULT_PICK_FROM_TOP = 3
 
 /**
+ * Facet size for species searches. Hero slots and thematic strips use the
+ * same size, so the same filter (for example, insects) is one GBIF request.
+ */
+export const SPECIES_FACET_LIMIT = 5
+
+/**
  * A candidate must have at least this fraction of the slot's top candidate's
  * observation count to be eligible for seeded rotation.  Keeps sparse-place
  * slots from surfacing near-zero-observation species.
@@ -100,7 +106,7 @@ export type InSeasonRule = {
 }
 
 export const IN_SEASON_RULE: InSeasonRule = {
-  facetLimit: 5,
+  facetLimit: SPECIES_FACET_LIMIT,
   stripSize: 3,
   highlight: 'Recorded this month',
 }
@@ -117,7 +123,7 @@ export type SmallWondersRule = {
 }
 
 export const SMALL_WONDERS_RULE: SmallWondersRule = {
-  facetLimit: 5,
+  facetLimit: SPECIES_FACET_LIMIT,
   stripSize: 3,
   sources: [
     { label: 'Insect', filter: { classKey: 216 } },
@@ -132,7 +138,7 @@ export type NightCreaturesRule = {
 }
 
 export const NIGHT_CREATURES_RULE: NightCreaturesRule = {
-  facetLimit: 5,
+  facetLimit: SPECIES_FACET_LIMIT,
   stripSize: 3,
   sources: [
     { label: 'Bat', filter: { orderKey: 734 } },

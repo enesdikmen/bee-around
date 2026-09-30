@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchOccurrenceFacets } from '../../api/gbif'
+import { fetchOccurrenceFacets, fetchSpecies } from '../../api/gbif'
 import {
   IN_SEASON_RULE,
   MIN_COUNT_RATIO,
   NIGHT_CREATURES_RULE,
   SMALL_WONDERS_RULE,
+  type SmallWondersSourceRule,
+  type TaxonFilter,
 } from '../../data/lensSelection'
 import type { Place, SpeciesCard, ThematicStripCard } from '../../types/lens'
 import { placeGeoParams, seededShuffle } from './shared'
@@ -48,51 +50,69 @@ export const useThematicLensData = (
   const currentMonth = new Date().getMonth() + 1
 
   const resolveMergedStrip = async (
-    sources: { label: string; filter: Record<string, number | undefined> }[],
+    sources: SmallWondersSourceRule[],
     facetLimit: number,
     stripSize: number,
     signal: AbortSignal | undefined,
   ): Promise<SpeciesPick[]> => {
     if (!selectedPlace) return []
 
-    const baseReq = {
-      ...placeGeoParams(selectedPlace),
-      facetFields: ['speciesKey'] as Array<'speciesKey'>,
-      facetLimit,
-      signal,
+    // GBIF ORs repeated values of one filter (familyKey=a&familyKey=b), so
+    // sources are searched once per filter type instead of once per source.
+    // Each source has exactly one filter. Every species belongs to a single
+    // order and family, so its count matches the per-source search.
+    const groups = new Map<keyof TaxonFilter, SmallWondersSourceRule[]>()
+    for (const source of sources) {
+      const field = Object.keys(source.filter)[0] as keyof TaxonFilter
+      groups.set(field, [...(groups.get(field) ?? []), source])
     }
 
     const responses = await Promise.all(
-      sources.map(async (source) => ({
-        label: source.label,
-        response: await fetchOccurrenceFacets({
-          ...baseReq,
-          ...source.filter,
-        }),
-      })),
+      Array.from(groups, async ([field, group]) => {
+        const values = group.map((source) => source.filter[field] as number)
+        const response = await fetchOccurrenceFacets({
+          ...placeGeoParams(selectedPlace),
+          facetFields: ['speciesKey'],
+          facetLimit,
+          signal,
+          [field]: values.length === 1 ? values[0] : values,
+        })
+        return { field, group, response }
+      }),
     )
 
     const all = responses
-      .flatMap(({ label, response }) =>
+      .flatMap(({ field, group, response }) =>
         (response.facets?.[0]?.counts ?? []).map((c) => ({
           speciesKey: Number(c.name),
           count: c.count,
-          highlight: label,
+          field,
+          group,
         })),
       )
       .filter((c) => Number.isFinite(c.speciesKey))
       .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
 
     const seen = new Set<number>()
-    const picks: typeof all = []
+    const top: typeof all = []
     for (const item of all) {
       if (seen.has(item.speciesKey)) continue
       seen.add(item.speciesKey)
-      picks.push(item)
-      if (picks.length >= stripSize) break
+      top.push(item)
+      if (top.length >= stripSize) break
     }
 
-    return picks
+    // A merged search does not say which source matched, so read the
+    // species' own order/family key. The same metadata request is reused
+    // when the cards are built.
+    return Promise.all(
+      top.map(async ({ speciesKey, count, field, group }) => {
+        if (group.length === 1) return { speciesKey, count, highlight: group[0].label }
+        const species = await fetchSpecies({ speciesKey, signal, language: commonNameLanguage })
+        const source = group.find((s) => species[field as keyof typeof species] === s.filter[field])
+        return { speciesKey, count, highlight: (source ?? group[0]).label }
+      }),
+    )
   }
 
   const inSeasonQuery = useQuery({

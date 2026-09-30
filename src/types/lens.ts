@@ -72,6 +72,8 @@ export type ThreatenedSpecies = SpeciesCard & {
 }
 
 export type ConservationSnapshot = {
+  /** Red-list species counts load after the poster is shown. */
+  countsStatus: 'pending' | 'ready' | 'error'
   totalAssessedSpecies: number
   threatenedCount: number
   threatenedPercent: number

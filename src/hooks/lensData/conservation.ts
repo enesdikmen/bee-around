@@ -1,10 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchOccurrenceFacets, fetchSpecies } from '../../api/gbif'
-import {
-  IUCN_LABELS,
-  fallbackConservationSnapshot,
-} from '../../data/lensFallbacks'
+import { IUCN_LABELS } from '../../data/lensFallbacks'
 import type { ConservationSnapshot, Place, ThreatenedSpecies } from '../../types/lens'
 import { placeGeoParams, seededPick } from './shared'
 import { speciesCardBase } from './speciesCards'
@@ -39,24 +36,27 @@ export const useConservationSnapshot = (
     queryKey: ['iucnSpeciesCounts', selectedPlace?.id],
     queryFn: async ({ signal }) => {
       if (!selectedPlace) return []
-      const results = await Promise.all(
-        ALL_CATS.map(async (cat) => {
-          const response = await fetchOccurrenceFacets({
-            ...placeGeoParams(selectedPlace),
-            facetFields: ['speciesKey'],
-            facetLimit: IUCN_SPECIES_COUNT_FACET_LIMIT,
-            iucnRedListCategory: cat,
-            signal,
-          })
-          const speciesCount = response.facets?.[0]?.counts?.length ?? 0
-          return {
-            status: cat,
-            label: IUCN_LABELS[cat] ?? cat,
-            speciesCount,
-            isCapped: speciesCount >= IUCN_SPECIES_COUNT_FACET_LIMIT,
-          }
-        }),
-      )
+      // These are GBIF's heaviest searches, and several in a row drew 429s
+      // in testing. Nothing on the poster waits for them, so send them one
+      // at a time, after other queued searches.
+      const results = []
+      for (const cat of ALL_CATS) {
+        const response = await fetchOccurrenceFacets({
+          ...placeGeoParams(selectedPlace),
+          facetFields: ['speciesKey'],
+          facetLimit: IUCN_SPECIES_COUNT_FACET_LIMIT,
+          iucnRedListCategory: cat,
+          signal,
+          queuePriority: 'low',
+        })
+        const speciesCount = response.facets?.[0]?.counts?.length ?? 0
+        results.push({
+          status: cat,
+          label: IUCN_LABELS[cat] ?? cat,
+          speciesCount,
+          isCapped: speciesCount >= IUCN_SPECIES_COUNT_FACET_LIMIT,
+        })
+      }
       return results
     },
     enabled: Boolean(selectedPlace),
@@ -141,29 +141,6 @@ export const useConservationSnapshot = (
   })
 
   const snapshot = useMemo<ConservationSnapshot>(() => {
-    if (!speciesCountsQuery.data?.length) return fallbackConservationSnapshot
-
-    const categoryBreakdown = speciesCountsQuery.data.map((c) => ({
-      status: c.status,
-      label: c.label,
-      count: c.speciesCount,
-      isCapped: c.isCapped,
-    }))
-
-    const totalAssessedSpecies = categoryBreakdown.reduce(
-      (sum, c) => sum + c.count,
-      0,
-    )
-    const threatenedCount = categoryBreakdown
-      .filter((c) =>
-        (THREATENED_CATS as readonly string[]).includes(c.status),
-      )
-      .reduce((sum, c) => sum + c.count, 0)
-    const threatenedPercent =
-      totalAssessedSpecies > 0
-        ? Math.round((threatenedCount / totalAssessedSpecies) * 1000) / 10
-        : 0
-
     const groupedThreatened = new Map<string, ThreatenedCandidate[]>()
     for (const candidate of threatenedSpeciesQuery.data ?? []) {
       const bucket = groupedThreatened.get(candidate.group)
@@ -192,7 +169,43 @@ export const useConservationSnapshot = (
       })
       .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
 
+    // The counts only fill the red-list numbers on the sightings card, and
+    // arrive after the poster is shown. Species cards never depend on them,
+    // so a slow or failed count cannot change which species appear.
+    if (!speciesCountsQuery.data?.length) {
+      return {
+        countsStatus: speciesCountsQuery.isError ? 'error' : 'pending',
+        totalAssessedSpecies: 0,
+        threatenedCount: 0,
+        threatenedPercent: 0,
+        categoryBreakdown: [],
+        threatenedSpecies,
+      }
+    }
+
+    const categoryBreakdown = speciesCountsQuery.data.map((c) => ({
+      status: c.status,
+      label: c.label,
+      count: c.speciesCount,
+      isCapped: c.isCapped,
+    }))
+
+    const totalAssessedSpecies = categoryBreakdown.reduce(
+      (sum, c) => sum + c.count,
+      0,
+    )
+    const threatenedCount = categoryBreakdown
+      .filter((c) =>
+        (THREATENED_CATS as readonly string[]).includes(c.status),
+      )
+      .reduce((sum, c) => sum + c.count, 0)
+    const threatenedPercent =
+      totalAssessedSpecies > 0
+        ? Math.round((threatenedCount / totalAssessedSpecies) * 1000) / 10
+        : 0
+
     return {
+      countsStatus: 'ready',
       totalAssessedSpecies,
       threatenedCount,
       threatenedPercent,
@@ -201,15 +214,16 @@ export const useConservationSnapshot = (
     }
   }, [
     speciesCountsQuery.data,
+    speciesCountsQuery.isError,
     threatenedSpeciesQuery.data,
     selectedPlace?.id,
     contentSeed,
   ])
 
+  // Red-list counts are deliberately not part of readiness (see above).
   const isReady =
     !selectedPlace ||
-    ((speciesCountsQuery.isSuccess || speciesCountsQuery.isError) &&
-      (threatenedSpeciesPoolQuery.isSuccess || threatenedSpeciesPoolQuery.isError) &&
+    ((threatenedSpeciesPoolQuery.isSuccess || threatenedSpeciesPoolQuery.isError) &&
       (threatenedSpeciesKeys.length === 0 ||
         threatenedSpeciesQuery.isSuccess ||
         threatenedSpeciesQuery.isError))

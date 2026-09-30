@@ -11,6 +11,7 @@ import {
   HERO_SLOT_RULES,
   MIN_COUNT_RATIO,
   MIN_VIABLE_CANDIDATES,
+  SPECIES_FACET_LIMIT,
   type HeroSlotRule,
 } from '../../data/lensSelection'
 import type { Place, SpeciesCard } from '../../types/lens'
@@ -90,7 +91,7 @@ export const useTopSpeciesData = (
           const response = await fetchOccurrenceFacets({
             ...placeGeoParams(selectedPlace),
             facetFields: ['speciesKey'],
-            facetLimit: pick,
+            facetLimit: Math.max(pick, SPECIES_FACET_LIMIT),
             signal,
             ...filter,
           })
@@ -118,8 +119,12 @@ export const useTopSpeciesData = (
           } => item !== null,
         )
 
-      const slotPools = await buildSlotPools(HERO_SLOT_RULES)
-      const extraMiniSlotPools = await buildSlotPools(EXTRA_MINI_SLOT_RULES)
+      // Queue both groups now. Awaiting the heroes first sent the extra
+      // searches to the back of the GBIF queue. Each group keeps its order.
+      const [slotPools, extraMiniSlotPools] = await Promise.all([
+        buildSlotPools(HERO_SLOT_RULES),
+        buildSlotPools(EXTRA_MINI_SLOT_RULES),
+      ])
 
       return { slots: slotPools, extraMiniSlots: extraMiniSlotPools }
     },

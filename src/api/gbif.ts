@@ -2,33 +2,44 @@ const GBIF_BASE_URL = 'https://api.gbif.org/v1'
 const GBIF_MAX_CONCURRENT_REQUESTS = 6
 const GBIF_MAX_429_RETRIES = 3
 const GBIF_RETRY_BACKOFF_MS = 1000
+// A concurrency cap alone still allows bursts when responses arrive quickly.
+// This is a starting pace, not a guaranteed GBIF allowance (limits vary with load).
+const GBIF_SEARCH_START_INTERVAL_MS = 100
+const GBIF_MAX_START_INTERVAL_MS = 1000
+const GBIF_RECOVERY_SUCCESSES = 6
 
+type GbifLane = {
+	maxConcurrent: number
+	inFlight: number
+	nextStartAt: number
+	baseIntervalMs: number
+	startIntervalMs: number
+	throttledUntil: number
+	successesSinceThrottle: number
+}
+
+const createLane = (maxConcurrent: number, baseIntervalMs: number): GbifLane => ({
+	maxConcurrent,
+	inFlight: 0,
+	nextStartAt: 0,
+	baseIntervalMs,
+	startIntervalMs: baseIntervalMs,
+	throttledUntil: 0,
+	successesSinceThrottle: 0,
+})
+
+// GBIF's expensive occurrence searches need pacing. Metadata may use spare
+// capacity immediately, so fetching names does not wait behind a search timer.
+const gbifSearchLane = createLane(3, GBIF_SEARCH_START_INTERVAL_MS)
+const gbifMetadataLane = createLane(GBIF_MAX_CONCURRENT_REQUESTS, 0)
 let gbifInFlight = 0
-const gbifQueue: Array<() => void> = []
+type GbifQueueEntry = { lane: GbifLane; priority: QueuePriority; start: () => void }
+const gbifQueue: GbifQueueEntry[] = []
+let gbifQueueTimer: ReturnType<typeof setTimeout> | undefined
+let gbifCooldownUntil = 0
 
 const createAbortError = () =>
 	new DOMException('The operation was aborted.', 'AbortError')
-
-const wait = (ms: number, signal?: AbortSignal) =>
-	new Promise<void>((resolve, reject) => {
-		if (ms <= 0) {
-			resolve()
-			return
-		}
-
-		const timer = setTimeout(() => {
-			signal?.removeEventListener('abort', onAbort)
-			resolve()
-		}, ms)
-
-		const onAbort = () => {
-			clearTimeout(timer)
-			signal?.removeEventListener('abort', onAbort)
-			reject(createAbortError())
-		}
-
-		signal?.addEventListener('abort', onAbort, { once: true })
-	})
 
 const parseRetryAfterMs = (value: string | null) => {
 	if (!value) return null
@@ -42,37 +53,98 @@ const parseRetryAfterMs = (value: string | null) => {
 	return null
 }
 
-const acquireGbifSlot = async (signal?: AbortSignal) => {
-	if (signal?.aborted) throw createAbortError()
+const drainGbifQueue = () => {
+	if (gbifQueueTimer !== undefined) {
+		clearTimeout(gbifQueueTimer)
+		gbifQueueTimer = undefined
+	}
+	if (!gbifQueue.length || gbifInFlight >= GBIF_MAX_CONCURRENT_REQUESTS) return
 
-	if (gbifInFlight < GBIF_MAX_CONCURRENT_REQUESTS) {
-		gbifInFlight += 1
+	const now = Date.now()
+	const available = gbifQueue.filter(({ lane }) => lane.inFlight < lane.maxConcurrent)
+	if (!available.length) return // A completing request will wake the queue.
+	const nextStartAt = Math.min(...available.map(({ lane }) => lane.nextStartAt))
+	const delay = Math.max(nextStartAt, gbifCooldownUntil) - now
+	if (delay > 0) {
+		// Clamp only the timer, not the cooldown: large Retry-After values must
+		// not overflow setTimeout and accidentally cause an immediate retry.
+		gbifQueueTimer = setTimeout(drainGbifQueue, Math.min(delay, 2 ** 31 - 1))
 		return
 	}
+
+	// FIFO, except that low-priority work waits while normal work is ready.
+	const ready = ({ lane }: GbifQueueEntry) =>
+		lane.inFlight < lane.maxConcurrent && lane.nextStartAt <= now
+	let index = gbifQueue.findIndex((entry) => ready(entry) && entry.priority === 'normal')
+	if (index < 0) index = gbifQueue.findIndex(ready)
+	const { lane, start } = gbifQueue.splice(index, 1)[0]
+	gbifInFlight += 1
+	lane.inFlight += 1
+	lane.nextStartAt = now + lane.startIntervalMs
+	start()
+	drainGbifQueue()
+}
+
+const throttleGbifQueue = (lane: GbifLane, retryAfter: string | null, attempt: number) => {
+	const now = Date.now()
+	// Multiple in-flight requests can be rejected in one wave. Slow the
+	// affected lane once per wave, while honoring every cooldown deadline.
+	if (now >= lane.throttledUntil) {
+		lane.startIntervalMs = Math.min(
+			Math.max(lane.startIntervalMs * 2, GBIF_SEARCH_START_INTERVAL_MS),
+			GBIF_MAX_START_INTERVAL_MS,
+		)
+	}
+	lane.successesSinceThrottle = 0
+	const delay = parseRetryAfterMs(retryAfter) ?? GBIF_RETRY_BACKOFF_MS * 2 ** attempt
+	const jitter = Math.floor(Math.random() * 250)
+	gbifCooldownUntil = Math.max(gbifCooldownUntil, now + Math.max(250, delay) + jitter)
+	lane.throttledUntil = gbifCooldownUntil
+	drainGbifQueue()
+}
+
+const recordGbifSuccess = (lane: GbifLane) => {
+	// Responses from before the throttle must not immediately undo it.
+	if (Date.now() < gbifCooldownUntil || lane.startIntervalMs === lane.baseIntervalMs) return
+	lane.successesSinceThrottle += 1
+	if (lane.successesSinceThrottle >= GBIF_RECOVERY_SUCCESSES) {
+		lane.startIntervalMs = Math.max(lane.baseIntervalMs, Math.floor(lane.startIntervalMs * 0.8))
+		lane.successesSinceThrottle = 0
+	}
+}
+
+const acquireGbifSlot = async (
+	lane: GbifLane,
+	priority: QueuePriority,
+	signal?: AbortSignal,
+) => {
+	if (signal?.aborted) throw createAbortError()
 
 	await new Promise<void>((resolve, reject) => {
 		const start = () => {
 			signal?.removeEventListener('abort', onAbort)
-			gbifInFlight += 1
 			resolve()
 		}
+		const entry = { lane, priority, start }
 
 		const onAbort = () => {
-			const idx = gbifQueue.indexOf(start)
+			const idx = gbifQueue.indexOf(entry)
 			if (idx >= 0) gbifQueue.splice(idx, 1)
 			signal?.removeEventListener('abort', onAbort)
 			reject(createAbortError())
+			drainGbifQueue()
 		}
 
-		gbifQueue.push(start)
+		gbifQueue.push(entry)
 		signal?.addEventListener('abort', onAbort, { once: true })
+		drainGbifQueue()
 	})
 }
 
-const releaseGbifSlot = () => {
+const releaseGbifSlot = (lane: GbifLane) => {
 	gbifInFlight = Math.max(0, gbifInFlight - 1)
-	const next = gbifQueue.shift()
-	if (next) next()
+	lane.inFlight = Math.max(0, lane.inFlight - 1)
+	drainGbifQueue()
 }
 
 // Metadata endpoints are highly reusable across lenses. Keep a small in-memory
@@ -151,6 +223,10 @@ export interface GbifSpecies {
 	canonicalName?: string
 	vernacularName?: string
 	rank?: string
+	kingdomKey?: number
+	classKey?: number
+	orderKey?: number
+	familyKey?: number
 	kingdom?: string
 	phylum?: string
 	class?: string
@@ -189,9 +265,17 @@ export interface GbifDataset {
 	}
 }
 
+/**
+ * `low` is for requests the poster does not wait on (the red-list species
+ * counts). They keep the same pace but start after queued normal requests,
+ * so requests that lead to species names and images finish sooner.
+ */
+export type QueuePriority = 'normal' | 'low'
+
 interface RequestOptions {
 	signal?: AbortSignal
 	headers?: HeadersInit
+	queuePriority?: QueuePriority
 }
 
 export interface OccurrenceFacetRequest extends RequestOptions {
@@ -204,6 +288,8 @@ export interface OccurrenceFacetRequest extends RequestOptions {
 	countryCode?: string
 	facetFields: FacetField[]
 	facetLimit?: number
+	/** Per-field overrides of `facetLimit`, sent as `<field>.facetLimit`. */
+	facetLimits?: Partial<Record<FacetField, number>>
 	facetOffset?: number
 	classKey?: number | number[]
 	kingdomKey?: number | number[]
@@ -284,10 +370,14 @@ const isCountryScaleBBox = (
 
 // Centralized JSON fetch so we keep error messages consistent for UI + debugging.
 const fetchJson = async <T>(url: string, options: RequestOptions = {}) => {
-	await acquireGbifSlot(options.signal)
-
-	try {
-		for (let attempt = 0; attempt <= GBIF_MAX_429_RETRIES; attempt++) {
+	const lane = url.startsWith(`${GBIF_BASE_URL}/occurrence/search?`)
+		? gbifSearchLane
+		: gbifMetadataLane
+	for (let attempt = 0; attempt <= GBIF_MAX_429_RETRIES; attempt++) {
+		// Every attempt uses the same queue, including retries. A 429 pauses
+		// all new GBIF traffic in this tab, instead of just its own request.
+		await acquireGbifSlot(lane, options.queuePriority ?? 'normal', options.signal)
+		try {
 			if (options.signal?.aborted) throw createAbortError()
 
 			const response = await fetch(url, {
@@ -296,23 +386,23 @@ const fetchJson = async <T>(url: string, options: RequestOptions = {}) => {
 			})
 
 			if (response.ok) {
-				return (await response.json()) as T
+				const data = (await response.json()) as T
+				recordGbifSuccess(lane)
+				return data
 			}
 
-			if (response.status === 429 && attempt < GBIF_MAX_429_RETRIES) {
-				const retryAfterMs = parseRetryAfterMs(response.headers.get('Retry-After'))
-				const waitMs = retryAfterMs ?? GBIF_RETRY_BACKOFF_MS * (attempt + 1)
-				await wait(waitMs, options.signal)
-				continue
+			if (response.status === 429) {
+				throttleGbifQueue(lane, response.headers.get('Retry-After'), attempt)
+				if (attempt < GBIF_MAX_429_RETRIES) continue
 			}
 
 			throw new Error(`GBIF request failed (${response.status}) for ${url}`)
+		} finally {
+			releaseGbifSlot(lane)
 		}
-
-		throw new Error(`GBIF request failed (429) for ${url}`)
-	} finally {
-		releaseGbifSlot()
 	}
+
+	throw new Error(`GBIF request failed (429) for ${url}`)
 }
 
 export const fetchOccurrenceFacets = async ({
@@ -323,6 +413,7 @@ export const fetchOccurrenceFacets = async ({
 	countryCode,
 	facetFields,
 	facetLimit = 10,
+	facetLimits,
 	facetOffset,
 	classKey,
 	kingdomKey,
@@ -334,6 +425,7 @@ export const fetchOccurrenceFacets = async ({
 	month,
 	year,
 	signal,
+	queuePriority,
 }: OccurrenceFacetRequest) => {
 	const normalizedCountryCode = normalizeCountryCode(countryCode)
 	const useCountryFilter = Boolean(normalizedCountryCode && isCountryScaleBBox(bbox))
@@ -359,6 +451,9 @@ export const fetchOccurrenceFacets = async ({
 		year,
 		facet: facetFields,
 		facetLimit,
+		...Object.fromEntries(
+			Object.entries(facetLimits ?? {}).map(([field, limit]) => [`${field}.facetLimit`, limit]),
+		),
 		facetOffset,
 	})
 
@@ -372,7 +467,7 @@ export const fetchOccurrenceFacets = async ({
 	const existing = occurrenceFacetInFlight.get(url)
 	if (existing) return raceWithSignal(existing, signal)
 
-	const request = fetchJson<OccurrenceFacetResponse>(url)
+	const request = fetchJson<OccurrenceFacetResponse>(url, { queuePriority })
 		.then((result) => {
 			occurrenceFacetCache.set(url, {
 				data: result,

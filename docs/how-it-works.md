@@ -46,7 +46,15 @@ GET /occurrence/search?limit=0&facet=...
 
 `limit=0` keeps payloads small while still returning the total `count` and facet counts. The app does not download all matching records for the poster.
 
-The GBIF client limits itself to 6 concurrent GBIF requests, retries `429` responses up to 3 times, honors `Retry-After` when present, and caches occurrence facet responses for 30 minutes. Species and dataset metadata are cached in memory for the session.
+The GBIF client allows up to 6 concurrent requests overall, including at most 3 occurrence searches. Occurrence searches initially start 100 ms apart. Species and dataset metadata can use spare capacity immediately, without waiting behind the search timer. This avoids search bursts while keeping metadata fast. This pace is a starting point, not a guaranteed GBIF allowance: GBIF changes its limits with server load. The queue is first-in, first-out, except that the six IUCN species-count searches are low priority. The poster does not wait for them, so they start after other queued searches, one at a time. The pace itself does not change. A poster needs about 21 distinct occurrence searches (a few more when a fallback filter or severity cascade is used).
+
+A `429` pauses all new GBIF requests in that browser tab, including retries. The queue honors `Retry-After` (seconds or an HTTP date), or uses exponential backoff when that header is unavailable, with a small random delay to spread retries. Each rate-limit wave also doubles the spacing for the affected request type (search or metadata), up to 1 second. After the cooldown, every 6 successful responses shorten the spacing by 20% until it returns to the starting pace. Each request still has at most 3 retries. Other tabs and devices have independent queues, so this cannot eliminate every rate limit.
+
+Identical in-flight occurrence, species, and dataset requests share one promise. Successful occurrence facet responses are cached for 30 minutes; species and dataset metadata are cached in memory for the session. A caller cancelling its wait does not cancel a shared request still needed by another caller, such as URL lock restoration. Failed responses are not cached.
+
+The queue itself only changes request timing. It never alters query parameters, response order, candidate pools, seeds, or the URL format. No persistent occurrence cache or background refresh is introduced. Repeatability still depends on the same upstream data and calendar month, as described below.
+
+Run `npm test` for the GBIF transport regression checks, including cooldowns, retry limits, concurrency, caching, language separation, and cancellation during shared requests.
 
 ## Main Summary Query
 
@@ -58,8 +66,12 @@ facet=year
 facet=datasetKey
 facet=kingdomKey
 facet=basisOfRecord
+facet=speciesKey
 facetLimit=300
+speciesKey.facetLimit=500
 ```
+
+The same request also feeds signature species (see below), so GBIF is queried once for both. `<field>.facetLimit` overrides `facetLimit` for that facet only.
 
 It powers:
 
@@ -94,7 +106,7 @@ The same card includes IUCN record buckets when available:
 - "Watch list": `NT + DD`
 - "At risk": `VU + EN + CR`
 
-Counts here are species-facet counts by IUCN category from the conservation query, not local population estimates.
+Counts here are species-facet counts by IUCN category from the conservation query, not local population estimates. These counts load after the rest of the poster is shown: the numbers read `…` until they arrive, and the section is hidden if they fail. No species card depends on them. A locked sightings card keeps its content live (like the sources card), so it never freezes the placeholder.
 
 The comparison bars come from `comparison_precompute.json`, not from live browser computation. The selected place is matched to the nearest precomputed city within 75 km; if no city matches, the app uses the first precomputed country row whose bounding box contains the point. The card currently displays:
 
@@ -105,7 +117,7 @@ The comparison bars come from `comparison_precompute.json`, not from live browse
 
 ### Hero Species
 
-The hero is the first item in `topSpeciesData`. Top species are built from taxonomic slot rules. Each slot asks GBIF for `facet=speciesKey` with a taxon filter and `facetLimit=3` unless overridden.
+The hero is the first item in `topSpeciesData`. Top species are built from taxonomic slot rules. Each slot asks GBIF for `facet=speciesKey` with a taxon filter and `facetLimit=5`, then keeps the top 3 (`pickFromTop`). The facet size matches the thematic searches, so the same filter (for example, insects for the hero slot and the small wonder theme) is one GBIF request.
 
 Hero and mini slot rules:
 
@@ -134,8 +146,10 @@ If the local data is too sparse for a species slot, that slot is skipped. Bee Ar
 The poster can show two primary thematic 1 x 1 species cards, plus hidden backup candidates used to fill gaps after locks. Three themes are built:
 
 - In season: top `speciesKey` records for the current calendar month, `facetLimit=5`, keep up to 3.
-- Small wonder: merges insect `classKey=216` and fungus `kingdomKey=5`, `facetLimit=5` per source, keep up to 3 unique species.
-- Night creature: merges bats `orderKey=734`, owls `orderKey=1450`, nightjars `familyKey=5225`, frogmouths `familyKey=9337`, potoos `familyKey=9324`, oilbird `familyKey=9346`, moth families `7015`, `6950`, `4532185`, `8841`, hawk moths `familyKey=8868`, and fireflies `familyKey=4737`.
+- Small wonder: merges insect `classKey=216` and fungus `kingdomKey=5`, `facetLimit=5` per source, keep up to 3 unique species. Both searches are shared with the insect and fungus hero slots.
+- Night creature: merges bats `orderKey=734`, owls `orderKey=1450`, nightjars `familyKey=5225`, frogmouths `familyKey=9337`, potoos `familyKey=9324`, oilbird `familyKey=9346`, moth families `7015`, `6950`, `4532185`, `8841`, hawk moths `familyKey=8868`, and fireflies `familyKey=4737`. GBIF treats repeated values of one filter as OR, so this is two searches: one with both `orderKey` values and one with all `familyKey` values. Each species belongs to one order and family, so the merged top 3 matches per-source searches. The source label (for example "Owl") comes from the species record's `orderKey`/`familyKey`.
+
+GBIF facet counts are approximate, slightly more so for broader searches, so a merged search can report a count a few records lower than a single-source search. Counts also change as GBIF indexes new records.
 
 Within each theme, species are sorted by count and deduplicated. A seeded shuffle rotates viable candidates. The three theme cards are also seeded-shuffled; after deduplication, the first two surviving themes are rendered.
 
@@ -177,7 +191,7 @@ User-facing evidence labels map GBIF basis values to plain language:
 
 ### At-Risk Species
 
-The conservation hook first counts species by IUCN category for:
+The conservation hook counts species by IUCN category for the sightings card:
 
 ```text
 LC, NT, VU, EN, CR, DD
@@ -193,9 +207,9 @@ GET /occurrence/search
   &iucnRedListCategory={category}
 ```
 
-The category card totals are the number of distinct species keys returned by each category facet. If the count reaches 40,000, it is marked capped.
+The category card totals are the number of distinct species keys returned by each category facet. If the count reaches 40,000, it is marked capped. These are GBIF's heaviest searches, so they run one at a time, after other queued searches, and the poster does not wait for them.
 
-Threatened species cards use a severity cascade:
+Threatened species cards do not depend on these counts. They use a severity cascade:
 
 1. Try `CR`.
 2. If no `CR` species exist, try `EN`.
@@ -207,13 +221,14 @@ The app requests the top 5 species for the winning category. After resolving spe
 
 The signature species card asks: which common-ish global species is observed disproportionately often in this place?
 
-Live signature computation uses:
+Live signature computation uses the `speciesKey` facet (limit 500) from the main summary query:
 
 ```text
 GET /occurrence/search
   ?limit=0
   &facet=speciesKey
-  &facetLimit=500
+  &speciesKey.facetLimit=500
+  (plus the summary facets)
 ```
 
 It compares local species shares against `global_baseline.json`, which stores the global total record count and the top 500 global species counts.
