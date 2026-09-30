@@ -163,16 +163,28 @@
   flex-direction: column;
   gap: 0;
 }
+/* Species pattern. Each motif file is a square tile with the motif centred
+   at the same size. `repeat: round` fits a whole number of tiles into the
+   panel (stretching the tile grid slightly, never the motif, which keeps
+   its aspect ratio), so motifs are never clipped and the spacing is even
+   between motifs and at every edge, at any card size. Themes change only
+   colours, through --species-pattern-wash and the panel background. */
 .bento-card--species-pattern {
-  --species-pattern-size: 44px 44px;
+  --species-pattern-tile: 30px;
   --species-pattern-wash: linear-gradient(
     rgb(var(--color-surface-soft) / 0.94),
     rgb(var(--color-surface-soft) / 0.94)
   );
   background-color: rgb(var(--color-surface-soft));
+}
+.bento-card--species-pattern .bento-hero__body::before,
+.bento-card--mini.bento-card--species-pattern::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
   background-image: var(--species-pattern-wash), var(--species-pattern);
-  background-repeat: repeat;
-  background-size: auto, var(--species-pattern-size);
+  background-size: auto, var(--species-pattern-tile) var(--species-pattern-tile);
+  background-repeat: no-repeat, round;
 }
 .bento-pattern--mammal { --species-pattern: url('/patterns/pattern-mammal.svg'); }
 .bento-pattern--bird { --species-pattern: url('/patterns/pattern-bird.svg'); }
@@ -205,10 +217,13 @@
   background: rgb(var(--color-surface-soft));
 }
 .bento-card--species-pattern .bento-hero__body {
-  background-color: rgb(var(--color-surface-soft));
-  background-image: var(--species-pattern-wash), var(--species-pattern);
-  background-repeat: repeat;
-  background-size: auto, 62px 62px;
+  --species-pattern-tile: 62px;
+  position: relative;
+  isolation: isolate;
+}
+.bento-card--species-pattern .bento-hero__body::before {
+  inset: 0;
+  z-index: -1;
 }
 .bento-hero__name {
   font-family: var(--font-display);
@@ -238,40 +253,29 @@
 
 /* ── Mini species card (1×1) ──────────────────────────── */
 /* Every 1×1 mini card shares the same vertical recipe:
-     1. a fixed-ratio image (aspect-ratio: 3/2) anchored to the top
+     1. a fixed-ratio image (--bento-mini-img-ratio, 3/2 on desktop) anchored to the top
      2. text rows below that flex to fill whatever remains
    Pinning the image with aspect-ratio (instead of flex:1) means the
    picture stays the same size whether the card has 2 or 3 text rows
    below it. Used by speciesMini, thematicStrip, atRisk. */
 .bento-card--mini {
+  /* Photo width / height. The pattern panel starts where the photo ends. */
+  --bento-mini-img-ratio: 1.5;
   padding: 0;
   gap: 0;
 }
 .bento-card--mini.bento-card--species-pattern {
-  --species-pattern-size: 30px 30px;
-  --species-pattern-panel-top: 66.6667%;
-  --species-pattern-panel-position: 5px 3px;
-  background-image: none;
+  container-type: inline-size;
 }
 .bento-card--mini.bento-card--species-pattern::before {
-  content: '';
-  position: absolute;
-  inset: var(--species-pattern-panel-top) 0 0;
+  /* The photo spans the card's full width (100cqw) at this ratio. */
+  inset: calc(100cqw / var(--bento-mini-img-ratio)) 0 0;
   z-index: 0;
-  pointer-events: none;
-  background-image:
-    var(--species-pattern-mini-wash, var(--species-pattern-wash)),
-    var(--species-pattern);
-  background-position:
-    0 0,
-    var(--species-pattern-panel-position);
-  background-repeat: repeat;
-  background-size: auto, var(--species-pattern-size);
 }
 .bento-mini__img {
   --species-placeholder-icon-size: min(48%, 4.9rem);
   width: 100%;
-  aspect-ratio: 3 / 2;
+  aspect-ratio: var(--bento-mini-img-ratio, 1.5);
   flex: 0 0 auto;
   border-radius:
     calc(var(--bento-card-radius) - var(--bento-card-border-width))
@@ -556,14 +560,12 @@
     font-size: 0.58rem;
   }
 
-  .bento-mini__img {
-    aspect-ratio: 1.18 / 1;
+  .bento-card--mini {
+    --bento-mini-img-ratio: 1.18;
   }
 
   .bento-card--mini.bento-card--species-pattern {
-    --species-pattern-panel-top: 84.7458%;
-    --species-pattern-size: 26px 26px;
-    --species-pattern-panel-position: 5px 2px;
+    --species-pattern-tile: 26px;
   }
 
   .bento-card--mini > .bento-mini__name,

@@ -49,12 +49,8 @@
 }
 
 .theme-afterdark .bento-card--hero.bento-card--species-pattern .bento-hero__body {
+  --species-pattern-wash: linear-gradient(rgb(var(--color-afterdark-cyan) / 0.88), rgb(var(--color-afterdark-cyan) / 0.88));
   background-color: rgb(var(--color-afterdark-cyan));
-  background-image:
-    linear-gradient(rgb(var(--color-afterdark-cyan) / 0.88), rgb(var(--color-afterdark-cyan) / 0.88)),
-    var(--species-pattern);
-  background-repeat: repeat;
-  background-size: auto, 62px 62px;
 }
 
 .theme-afterdark .bento-card--signature.accent-forest {
@@ -128,8 +124,7 @@
 
 .theme-afterdark .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern:not(.bento-card--thematic):not(.bento-card--at-risk):not(.bento-card--signature) {
   background-color: rgb(var(--species-pattern-bg, var(--color-surface-soft)));
-  background-image: none;
-  --species-pattern-mini-wash: linear-gradient(
+  --species-pattern-wash: linear-gradient(
     rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88),
     rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88)
   );

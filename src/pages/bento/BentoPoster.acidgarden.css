@@ -59,12 +59,7 @@
 }
 
 .theme-acidgarden .bento-card--hero.bento-card--species-pattern .bento-hero__body {
-  background-image:
-    linear-gradient(rgb(var(--color-surface) / 0.82), rgb(var(--color-surface) / 0.82)),
-    var(--species-pattern),
-    linear-gradient(135deg, rgb(var(--color-surface)) 0 72%, rgb(var(--color-acid-sage)) 72% 100%);
-  background-repeat: repeat, repeat, no-repeat;
-  background-size: auto, 62px 62px, auto;
+  --species-pattern-wash: linear-gradient(rgb(var(--color-surface) / 0.82), rgb(var(--color-surface) / 0.82));
 }
 
 .theme-acidgarden .bento-card--signature.accent-forest {
@@ -143,8 +138,7 @@
 
 .theme-acidgarden .bento-grid > .bento-card.bento-card--mini.bento-card--species-pattern:not(.bento-card--thematic):not(.bento-card--at-risk):not(.bento-card--signature) {
   background-color: rgb(var(--species-pattern-bg, var(--color-surface-soft)));
-  background-image: none;
-  --species-pattern-mini-wash: linear-gradient(
+  --species-pattern-wash: linear-gradient(
     rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88),
     rgb(var(--species-pattern-bg, var(--color-surface-soft)) / 0.88)
   );

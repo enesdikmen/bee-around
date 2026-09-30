@@ -314,8 +314,8 @@
     padding: 0.1rem 0.36rem !important;
   }
 
-  .bento-mini__img {
-    aspect-ratio: 1.56 / 1 !important;
+  .bento-card--mini {
+    --bento-mini-img-ratio: 1.56 !important;
   }
 
   .bento-card--mini > .bento-mini__name,
@@ -449,18 +449,12 @@
     border-left-width: 0.3mm !important;
   }
 
-  .bento-card--species-pattern {
-    --species-pattern-size: 56px 56px;
-  }
-
   .bento-card--mini.bento-card--species-pattern {
-    --species-pattern-panel-position: 5px 3px;
-    --species-pattern-panel-top: 66.6667%;
-    --species-pattern-size: 30px 30px;
+    --species-pattern-tile: 30px !important;
   }
 
   .bento-card--species-pattern .bento-hero__body {
-    background-size: auto, 76px 76px !important;
+    --species-pattern-tile: 76px !important;
   }
 
   .bento-sources {
