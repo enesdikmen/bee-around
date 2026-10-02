@@ -73,6 +73,10 @@ type ScoredSignatureCandidate = {
   ratio: number
 }
 
+// A shared empty list: a fresh `[]` on every render would look like new data
+// to every memo downstream and re-render the poster endlessly.
+const NO_SIGNATURE_SPECIES: SignatureSpeciesCard[] = []
+
 export const useLiveSignatureSpecies = (
   selectedPlace?: Place,
   commonNameLanguage = 'en',
@@ -222,7 +226,7 @@ export const useLiveSignatureSpecies = (
   })
 
   return {
-    signatureSpeciesData: query.data ?? [],
+    signatureSpeciesData: query.data ?? NO_SIGNATURE_SPECIES,
     isReady:
       !selectedPlace ||
       scoreQuery.isError ||
