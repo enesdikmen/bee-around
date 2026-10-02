@@ -11,7 +11,6 @@ import {
 import {
   canonicalizePlace,
   readLanguageFromLocation,
-  readLocksFromLocation,
   readShareFromLocation,
   readThemeFromLocation,
 } from './lib/shareToken'
@@ -83,7 +82,8 @@ const readViewFromLocation = (): AppView =>
     : 'poster'
 
 const initialShare = readShareFromLocation()
-const initialLocks = readLocksFromLocation()
+// Fixed cards only apply to the place the shared link was made for.
+const initialParams = initialShare ? new URLSearchParams(window.location.search) : undefined
 const initialLanguage = readLanguageFromLocation()
 const defaultPlaceSeed = places.find((place) => place.id === 'nairobi-ke') ?? places[0]
 const defaultPlace = canonicalizePlace({
@@ -182,7 +182,7 @@ function App() {
             commonNameLanguage={commonNameLanguage}
             onLanguageChange={setCommonNameLanguage}
             initialSeed={initialShare?.seed}
-            initialLocks={initialLocks}
+            initialParams={initialParams}
             onShowAbout={() => showView('about')}
           />
         </section>

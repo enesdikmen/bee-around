@@ -6,40 +6,24 @@ import {
   type ImageSource,
   type SpeciesImage,
 } from '../../api/speciesImage'
-import type {
-  ConservationSnapshot,
-  SpeciesCard,
-  ThematicStripCard,
-} from '../../types/lens'
-import type { SignatureSpeciesCard } from './signatureSpecies'
+import type { SpeciesCard } from '../../types/lens'
+import type { LensData } from './types'
 
-export type UseLensImageOverlayArgs = {
-  topSpeciesData: SpeciesCard[]
-  thematicStripCards: ThematicStripCard[]
-  conservationSnapshot: ConservationSnapshot
-  signatureSpeciesData: SignatureSpeciesCard[]
-  imageSources: ImageSource[]
-}
-
-export type UseLensImageOverlayResult = {
-  topSpeciesData: SpeciesCard[]
-  thematicStripCards: ThematicStripCard[]
-  conservationSnapshot: ConservationSnapshot
-  signatureSpeciesData: SignatureSpeciesCard[]
+export type SpeciesImages = {
+  /** Returns `data` with resolved images applied to every species card. */
+  applyImages: (data: LensData) => LensData
+  /** True once the first image pass for every species in `posters` is done. */
   isReady: boolean
 }
 
-export const useLensImageOverlay = (
-  args: UseLensImageOverlayArgs,
-): UseLensImageOverlayResult => {
-  const {
-    topSpeciesData,
-    thematicStripCards,
-    conservationSnapshot,
-    signatureSpeciesData,
-    imageSources,
-  } = args
-
+/**
+ * Resolves images for every species shown by any of `posters` (the current
+ * poster and the posters locked cards were captured from) in one query.
+ */
+export const useSpeciesImages = (
+  posters: LensData[],
+  imageSources: ImageSource[],
+): SpeciesImages => {
   const speciesForImaging = useMemo(() => {
     const map = new Map<number, { speciesKey: number; canonicalName?: string }>()
     const collect = (cards: SpeciesCard[] | undefined) => {
@@ -50,17 +34,14 @@ export const useLensImageOverlay = (
         map.set(key, { speciesKey: key, canonicalName: c.canonicalName })
       })
     }
-    collect(topSpeciesData)
-    thematicStripCards.forEach((card) => collect(card.species))
-    collect(conservationSnapshot.threatenedSpecies)
-    collect(signatureSpeciesData)
+    for (const data of posters) {
+      collect(data.topSpeciesData)
+      data.thematicStripCards.forEach((card) => collect(card.species))
+      collect(data.conservationSnapshot.threatenedSpecies)
+      collect(data.signatureSpeciesData)
+    }
     return Array.from(map.values()).sort((a, b) => a.speciesKey - b.speciesKey)
-  }, [
-    topSpeciesData,
-    thematicStripCards,
-    conservationSnapshot.threatenedSpecies,
-    signatureSpeciesData,
-  ])
+  }, [posters])
 
   const imageMapQuery = useQuery({
     queryKey: [
@@ -165,28 +146,21 @@ export const useLensImageOverlay = (
     }
   }, [imageMap])
 
-  const imagedTopSpecies = useMemo(
-    () => topSpeciesData.map(applyImage),
-    [topSpeciesData, applyImage],
-  )
-  const imagedThematicStripCards = useMemo(
-    () =>
-      thematicStripCards.map((c) => ({
+  const applyImages = useMemo(
+    () => (data: LensData): LensData => ({
+      ...data,
+      topSpeciesData: data.topSpeciesData.map(applyImage),
+      thematicStripCards: data.thematicStripCards.map((c) => ({
         ...c,
         species: c.species.map(applyImage),
       })),
-    [thematicStripCards, applyImage],
-  )
-  const imagedConservationSnapshot = useMemo(
-    () => ({
-      ...conservationSnapshot,
-      threatenedSpecies: conservationSnapshot.threatenedSpecies.map(applyImage),
+      conservationSnapshot: {
+        ...data.conservationSnapshot,
+        threatenedSpecies: data.conservationSnapshot.threatenedSpecies.map(applyImage),
+      },
+      signatureSpeciesData: data.signatureSpeciesData.map(applyImage),
     }),
-    [conservationSnapshot, applyImage],
-  )
-  const imagedSignatureSpecies = useMemo(
-    () => signatureSpeciesData.map(applyImage),
-    [signatureSpeciesData, applyImage],
+    [applyImage],
   )
 
   const isReady =
@@ -194,11 +168,5 @@ export const useLensImageOverlay = (
     (imageMapQuery.isSuccess && !imageMapQuery.isPlaceholderData) ||
     imageMapQuery.isError
 
-  return {
-    topSpeciesData: imagedTopSpecies,
-    thematicStripCards: imagedThematicStripCards,
-    conservationSnapshot: imagedConservationSnapshot,
-    signatureSpeciesData: imagedSignatureSpecies,
-    isReady,
-  }
+  return useMemo(() => ({ applyImages, isReady }), [applyImages, isReady])
 }

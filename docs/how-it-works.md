@@ -313,17 +313,26 @@ Regenerate can change:
 
 It does not change the selected place or the underlying GBIF query area.
 
-Most cards can be locked. A lock stores:
+Most cards can be locked. The poster state (`src/lib/posterState.ts`) is the seed plus a list of fixed cards, each with:
 
 - `slotId`
-- grid `x` and `y`
-- the `captureSeed` active when the card was locked
+- the seed its content came from
+- grid `x` and `y`, in a grid of `g` columns (6 unless the user acted on a narrower screen)
 
-Locked cards keep their content and position across Regenerate. The title and sources cards are locked by default. Unlocking a card keeps the visible card stable until the next Regenerate so the click itself does not reshuffle the poster.
+A fixed card is either locked (kept across Regenerate until unlocked) or held (just unlocked, kept as it is until the next Regenerate, so the click never swaps the card). The title and sources cards start locked. Locking records the seed the visible content came from, which can be older than the current seed.
+
+The poster is a pure function of this state and the place's data (`src/lib/posterLayout.ts`):
+
+1. Fixed cards go first and are never dropped. Each is rebuilt from its own seed; the sources and sightings cards always show live content in their fixed place.
+2. Fresh cards for the current seed fill the remaining area in registry order, skipping slots and species already shown.
+3. Backup cards, then invisible fillers, fill any gap, so the poster always has 24 cells.
+4. Packing honours every fixed position that fits. On a different column count, positions keep their offset from the nearest corner (sources stays bottom-right); a position that collides is placed freely instead. If fresh cards cannot fit around fixed ones, the largest is swapped for fillers, so the layout never fails.
+
+Data is fetched once per place (`useLensPools`); the picks for any seed come from `selectLensData(pools, seed)`, which is pure. Images are resolved for the current seed and every fixed card's seed together. A new poster is shown only when all of its data and images are ready, so Regenerate and language changes swap the whole poster at once instead of updating card by card.
 
 ## Share URLs
 
-The app keeps the URL synchronized with poster state.
+The app keeps the URL synchronized with poster state; the sources QR code is built from the same state, so both always match.
 
 The `s=` parameter stores place and seed:
 
@@ -332,13 +341,13 @@ The `s=` parameter stores place and seed:
 
 Coordinates and bbox values are quantized to 1e-4 degrees. Radius is stored in tenths of a kilometer. Custom places are canonicalized so the original tab and reopened tab use the same geometry and therefore the same seeded selection keys.
 
-The `l=` parameter stores user-managed locks:
+Fixed cards use `l=` (locked) and `h=` (held), each a list of:
 
 ```text
-<slotId>_<x36>_<y36>_<captureSeed36>,...
+<slotId>_<x36>_<y36>_<seed36>,...
 ```
 
-Absent `l=` means default locks are applied. Empty `l=` means the user explicitly cleared all locks.
+Absent `l=` means the default locks (title top-left, sources bottom-right). Empty `l=` means no locks at all. `g=` is the column count the positions refer to, left out when it is 6.
 
 The URL also stores `lang=` and `theme=`.
 

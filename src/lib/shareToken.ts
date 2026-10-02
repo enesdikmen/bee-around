@@ -1,6 +1,6 @@
 /**
- * Share token encodes the minimum state needed to reproduce a poster
- * (place + poster seed) as one URL param.
+ * Share token encodes the place and poster seed as one URL param (`s`).
+ * Fixed cards are encoded separately by posterState.
  *
  * Current format (compact):
  * - Known fallback city:    k.<seed36>.<index36>
@@ -16,30 +16,9 @@
  */
 import type { Place, PlaceBBox } from '../types/lens'
 import { places } from '../data/lensFallbacks'
+import { writePosterParams, type PosterState } from './posterState'
 
 export type ShareState = { place: Place; seed: number }
-
-/** One lock entry as it travels through the URL. The `tile` itself is
- *  rebuilt at runtime from `captureSeed`, so only this minimum is stored. */
-export type LockEntry = {
-  slotId: string
-  x: number
-  y: number
-  /** `posterSeed` value at the moment of locking. Used to reproduce the
-   *  exact content snapshot when the URL is reopened. Each lock carries
-   *  its own seed so a poster that has been "regenerate-around-locks"-ed
-   *  multiple times can mix snapshots from different seeds. */
-  captureSeed: number
-}
-
-/** Decoded lock list. `present=false` means the URL had no `l=` param
- *  (apply defaults). `present=true` with an empty list means the user
- *  explicitly cleared all locks. */
-export type LockListState = {
-  present: boolean
-  locks: LockEntry[]
-  unlockedDefaultSlotIds: string[]
-}
 
 const SCALE = 10000
 const RADIUS_SCALE = 10
@@ -259,137 +238,24 @@ export function readThemeFromLocation(): string | null {
 }
 
 /**
- * Encode the lock list as a single compact `l=` param.
- *
- * Format: `<slotId>_<x36>_<y36>_<captureSeed36>,...`
- * - slot ids only contain `[a-zA-Z0-9-]` so they are URL-safe verbatim.
- * - Field separator `_`, lock separator `,`.
- * - `captureSeed36` is REQUIRED on every entry — each lock fully
- *   self-describes the seed it was captured at so the URL is a
- *   round-trip fixed point regardless of how many distinct seeds the
- *   locks span.
- * - An empty `l=` value (no entries) means "user has explicitly cleared
- *   all locks"; absent `l=` param means "apply defaults".
- * - `u=` stores default lock slots (currently title/sources) that the user
- *   explicitly unlocked, so links can still combine custom locks with the
- *   remaining implicit defaults.
+ * The full URL for a poster: place and seed (`s`), fixed cards (`l`, `h`,
+ * `g`, see posterState), language and theme. Built from state alone, so the
+ * address bar and the sources QR code always agree. Unknown params are
+ * dropped; the hash (e.g. `#about`) is kept.
  */
-export function encodeLocks(locks: LockEntry[]): string {
-  return locks
-    .filter(
-      (l) =>
-        /^[A-Za-z0-9-]+$/.test(l.slotId) &&
-        Number.isFinite(l.captureSeed) &&
-        l.captureSeed > 0,
-    )
-    .map(
-      (l) =>
-        `${l.slotId}_${Math.max(0, Math.trunc(l.x)).toString(36)}_${Math.max(
-          0,
-          Math.trunc(l.y),
-        ).toString(36)}_${Math.max(1, Math.trunc(l.captureSeed)).toString(36)}`,
-    )
-    .join(',')
-}
-
-function encodeSlotIdList(slotIds: string[]): string {
-  return Array.from(new Set(slotIds))
-    .filter((slotId) => /^[A-Za-z0-9-]+$/.test(slotId))
-    .join(',')
-}
-
-function decodeSlotIdList(raw: string | null): string[] {
-  if (!raw) return []
-  return Array.from(new Set(raw.split(','))).filter((slotId) =>
-    /^[A-Za-z0-9-]+$/.test(slotId),
-  )
-}
-
-export function decodeLocks(raw: string): LockListState {
-  if (raw === '') return { present: true, locks: [], unlockedDefaultSlotIds: [] }
-  const locks: LockEntry[] = []
-  for (const part of raw.split(',')) {
-    const fields = part.split('_')
-    if (fields.length !== 4) continue
-    const slotId = fields[0]
-    if (!/^[A-Za-z0-9-]+$/.test(slotId)) continue
-    const x = Number.parseInt(fields[1], 36)
-    const y = Number.parseInt(fields[2], 36)
-    const captureSeed = Number.parseInt(fields[3], 36)
-    if (
-      !Number.isFinite(x) ||
-      !Number.isFinite(y) ||
-      !Number.isFinite(captureSeed) ||
-      captureSeed <= 0
-    ) {
-      continue
-    }
-    locks.push({ slotId, x, y, captureSeed })
-  }
-  return { present: true, locks, unlockedDefaultSlotIds: [] }
-}
-
-/** Read `l=` from the current URL. */
-export function readLocksFromLocation(): LockListState {
-  if (typeof window === 'undefined') {
-    return { present: false, locks: [], unlockedDefaultSlotIds: [] }
-  }
-  const url = new URL(window.location.href)
-  const raw = url.searchParams.get('l')
-  const unlockedDefaultSlotIds = decodeSlotIdList(url.searchParams.get('u'))
-  if (raw === null) {
-    return {
-      present: unlockedDefaultSlotIds.length > 0,
-      locks: [],
-      unlockedDefaultSlotIds,
-    }
-  }
-  return { ...decodeLocks(raw), unlockedDefaultSlotIds }
-}
-
-/**
- * Update the `?s=...`, `?l=...`, `?lang=...`, and `?theme=...` params
- * in the address bar without
- * pushing history. Pass `lockState=null`/`undefined` to omit `l=`
- * entirely (caller has no opinion / before defaults applied). Pass a
- * state object with an empty list to record "explicitly no locks".
- */
-export function syncShareToLocation(
+export function posterUrl(
   place: Place,
-  seed: number,
-  lockState?: { locks: LockEntry[]; unlockedDefaultSlotIds?: string[] } | null,
-  language = 'en',
-  theme = 'playful',
-): void {
-  if (typeof window === 'undefined') return
-  const url = new URL(window.location.href)
-  const token = encodeShare(place, seed)
-  const lToken = lockState ? encodeLocks(lockState.locks) : null
-  const uToken = lockState
-    ? encodeSlotIdList(lockState.unlockedDefaultSlotIds ?? [])
-    : null
-  const langToken = language.trim().toLowerCase() || 'en'
-  const themeToken = theme.trim().toLowerCase() || 'playful'
-
-  const curSToken = url.searchParams.get('s')
-  const curLToken = url.searchParams.get('l')
-  const curUToken = url.searchParams.get('u')
-  const curLangToken = (url.searchParams.get('lang') ?? 'en').trim().toLowerCase()
-  const curThemeToken = (url.searchParams.get('theme') ?? 'playful').trim().toLowerCase()
-  if (
-    curSToken === token &&
-    (curLToken ?? null) === lToken &&
-    (curUToken ?? null) === (uToken || null) &&
-    curLangToken === langToken &&
-    curThemeToken === themeToken
-  ) return
-
-  url.searchParams.set('s', token)
-  if (lToken !== null) url.searchParams.set('l', lToken)
-  else url.searchParams.delete('l')
-  if (uToken) url.searchParams.set('u', uToken)
-  else url.searchParams.delete('u')
-  url.searchParams.set('lang', langToken)
-  url.searchParams.set('theme', themeToken)
-  window.history.replaceState(null, '', url.toString())
+  state: PosterState,
+  language: string,
+  theme: string,
+  base: string = window.location.href,
+): URL {
+  const url = new URL(base)
+  const params = new URLSearchParams()
+  params.set('s', encodeShare(place, state.seed))
+  writePosterParams(params, state)
+  params.set('lang', language.trim().toLowerCase() || 'en')
+  params.set('theme', theme.trim().toLowerCase() || 'playful')
+  url.search = params.toString()
+  return url
 }

@@ -1,16 +1,21 @@
-import { readFile } from 'node:fs/promises'
-import ts from 'typescript'
+import { fileURLToPath } from 'node:url'
+import { build } from 'esbuild'
 
-// Compile a self-contained API module with the project's existing compiler.
-// A fresh module per test isolates its caches and timers without test-only
-// exports, new dependencies, or calls to the real services.
+// Bundle a TypeScript module and its imports with esbuild (already used by
+// Vite). A fresh module per test isolates its caches and timers without
+// test-only exports or calls to the real services.
 export async function moduleLoader(path) {
-  const source = await readFile(new URL(`../${path}`, import.meta.url), 'utf8')
-  const compiled = ts.transpileModule(source, {
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
-  }).outputText
+  const result = await build({
+    entryPoints: [fileURLToPath(new URL(`../${path}`, import.meta.url))],
+    bundle: true,
+    format: 'esm',
+    platform: 'neutral',
+    write: false,
+    logLevel: 'silent',
+  })
+  const code = Buffer.from(result.outputFiles[0].contents).toString('base64')
   let moduleId = 0
-  return () => import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}#${moduleId++}`)
+  return () => import(`data:text/javascript;base64,${code}#${moduleId++}`)
 }
 
 export function virtualClock(t) {

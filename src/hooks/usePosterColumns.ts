@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { POSTER_GRID_W } from '../pages/bentoTiles'
+import { POSTER_GRID_W } from '../lib/posterGrid'
 
 /**
  * Poster columns for the current viewport.

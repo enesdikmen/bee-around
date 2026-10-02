@@ -1,4 +1,3 @@
-import type { ImageSource } from '../../api/speciesImage'
 import type {
   BreakdownItem,
   ConservationSnapshot,
@@ -26,32 +25,26 @@ export type YearSummary = {
   yearCounts: YearCount[]
 }
 
-export type LensData = {
-  /** True when all queries needed for a stable poster snapshot are settled. */
-  isReady: boolean
+/** Place-level summary. The same for every poster seed. */
+export type LensSummary = {
   seasonalityData: number[]
   yearSummary: YearSummary | null
-  topSpeciesData: SpeciesCard[]
-  thematicStripCards: ThematicStripCard[]
-  conservationSnapshot: ConservationSnapshot
   kingdomBreakdown: BreakdownItem[]
   datasetSummaries: DatasetSummary[]
   totalRecords: number
   maxSeasonality: number
   recordsBreakdown: RecordsBreakdownItem[]
+}
+
+/** Everything one poster shows: the summary plus the species picked for a seed. */
+export type LensData = LensSummary & {
+  topSpeciesData: SpeciesCard[]
+  thematicStripCards: ThematicStripCard[]
+  conservationSnapshot: ConservationSnapshot
   /** Live-computed signature species (over-represented vs global baseline).
    *  A small pool (after cross-lens dedupe) of candidates ranked by
    *  `localShare / globalShare`. The signature-species card picks one at
    *  random from this list. Empty while loading, undersampled, or
    *  fully claimed by higher-priority lenses. */
   signatureSpeciesData: SignatureSpeciesCard[]
-}
-
-export type UseLensDataOptions = {
-  imageSources?: ImageSource[]
-  contentSeed?: number
-  /** Preferred language code for species common names (BCP-47). */
-  commonNameLanguage?: string
-  /** Disable all network work for this hook instance. */
-  enabled?: boolean
 }

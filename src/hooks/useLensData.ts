@@ -5,40 +5,72 @@ import {
   fetchOccurrenceFacets,
   fetchSpecies,
 } from '../api/gbif'
-import {
-  ALL_IMAGE_SOURCES,
-} from '../api/speciesImage'
 import type {
   DatasetSummary,
   Place,
 } from '../types/lens'
-import { useConservationSnapshot } from './lensData/conservation'
+import {
+  selectConservationSnapshot,
+  useConservationPools,
+  type ConservationPools,
+} from './lensData/conservation'
 import { dedupeSpeciesAcrossLenses } from './lensData/dedupe'
-import { useLensImageOverlay } from './lensData/imageOverlay'
 import { buildRecordsBreakdown } from './lensData/recordsBreakdown'
 import { facetCounts, placeSummaryRequest } from './lensData/shared'
-import { useThematicLensData } from './lensData/thematic'
-import { useTopSpeciesData } from './lensData/topSpecies'
-import { useLiveSignatureSpecies } from './lensData/signatureSpecies'
+import {
+  selectThematicStripCards,
+  useThematicPools,
+  type ThematicPools,
+} from './lensData/thematic'
+import {
+  selectTopSpecies,
+  useTopSpeciesPools,
+  type TopSpeciesPools,
+} from './lensData/topSpecies'
+import {
+  useLiveSignatureSpecies,
+  type SignatureSpeciesCard,
+} from './lensData/signatureSpecies'
 import type {
   LensData,
-  RecordsBreakdownItem,
-  UseLensDataOptions,
+  LensSummary,
   YearSummary,
 } from './lensData/types'
 
-export type { LensData, RecordsBreakdownItem, UseLensDataOptions } from './lensData/types'
+export type { LensData, RecordsBreakdownItem } from './lensData/types'
 
-export const useLensData = (
-  selectedPlace?: Place,
-  options: UseLensDataOptions = {},
-): LensData => {
-  const enabled = options.enabled ?? true
-  const activePlace = enabled ? selectedPlace : undefined
-  const imageSources = options.imageSources ?? ALL_IMAGE_SOURCES
-  const activeImageSources = enabled ? imageSources : []
-  const contentSeed = options.contentSeed ?? 1
-  const commonNameLanguage = options.commonNameLanguage ?? 'en'
+/**
+ * Everything fetched for a place. None of it depends on the poster seed, so
+ * the poster for any seed (the current one, or the seed a locked card was
+ * captured at) is computed from the same pools with {@link selectLensData}.
+ */
+export type LensPools = {
+  /** True when every query a poster needs has settled. */
+  isReady: boolean
+  placeId: string
+  summary: LensSummary
+  top: TopSpeciesPools
+  thematic: ThematicPools
+  conservation: ConservationPools
+  signatureSpeciesData: SignatureSpeciesCard[]
+}
+
+/** Seeded picks for one poster. Pure: the same pools and seed give the same data. */
+export const selectLensData = (pools: LensPools, seed: number): LensData =>
+  dedupeSpeciesAcrossLenses({
+    ...pools.summary,
+    topSpeciesData: selectTopSpecies(pools.top, pools.placeId, seed),
+    thematicStripCards: selectThematicStripCards(pools.thematic, pools.placeId, seed),
+    conservationSnapshot: selectConservationSnapshot(pools.conservation, pools.placeId, seed),
+    signatureSpeciesData: pools.signatureSpeciesData,
+  })
+
+export const useLensPools = (
+  selectedPlace: Place | undefined,
+  commonNameLanguage: string,
+): LensPools => {
+  const activePlace = selectedPlace
+  const enabled = Boolean(selectedPlace)
 
   const facetsQuery = useQuery({
     queryKey: ['occurrenceFacets', activePlace?.id],
@@ -100,21 +132,9 @@ export const useLensData = (
     }
   }, [facetsSummary])
 
-  const {
-    topSpeciesData,
-    isReady: isTopSpeciesReady,
-  } = useTopSpeciesData(activePlace, contentSeed, commonNameLanguage)
-
-  const { thematicStripCards, isReady: isThematicReady } = useThematicLensData(
-    activePlace,
-    contentSeed,
-    commonNameLanguage,
-  )
-
-  const {
-    snapshot: conservationSnapshot,
-    isReady: isConservationReady,
-  } = useConservationSnapshot(activePlace, contentSeed, commonNameLanguage)
+  const top = useTopSpeciesPools(activePlace, commonNameLanguage)
+  const thematic = useThematicPools(activePlace, commonNameLanguage)
+  const conservation = useConservationPools(activePlace, commonNameLanguage)
 
   const kingdomKeys = useMemo(
     () =>
@@ -199,58 +219,25 @@ export const useLensData = (
     )
   }, [datasetQuery.data, datasetCountsByKey])
 
-  const maxSeasonality = useMemo(
-    () => Math.max(...seasonalityData, 1),
-    [seasonalityData],
-  )
-
   const totalRecords = facetsQuery.data?.count ?? 0
 
-  const recordsBreakdown = useMemo<RecordsBreakdownItem[]>(() => {
-    return buildRecordsBreakdown(facetsSummary?.basisOfRecord ?? [], totalRecords)
-  }, [facetsSummary, totalRecords])
-
-  const {
-    signatureSpeciesData: liveSignatureSpecies,
-    isReady: isSignatureReady,
-  } = useLiveSignatureSpecies(activePlace, commonNameLanguage)
-
-  const dedupedPools = useMemo(() => {
-    return dedupeSpeciesAcrossLenses({
-      isReady: false,
+  const summary = useMemo<LensSummary>(
+    () => ({
       seasonalityData,
       yearSummary,
-      topSpeciesData,
-      thematicStripCards,
-      conservationSnapshot,
       kingdomBreakdown,
       datasetSummaries,
       totalRecords,
-      maxSeasonality,
-      recordsBreakdown,
-      signatureSpeciesData: liveSignatureSpecies,
-    })
-  }, [
-    seasonalityData,
-    yearSummary,
-    topSpeciesData,
-    thematicStripCards,
-    conservationSnapshot,
-    kingdomBreakdown,
-    datasetSummaries,
-    totalRecords,
-    maxSeasonality,
-    recordsBreakdown,
-    liveSignatureSpecies,
-  ])
+      maxSeasonality: Math.max(...seasonalityData, 1),
+      recordsBreakdown: buildRecordsBreakdown(facetsSummary?.basisOfRecord ?? [], totalRecords),
+    }),
+    [seasonalityData, yearSummary, kingdomBreakdown, datasetSummaries, totalRecords, facetsSummary],
+  )
 
-  const imaged = useLensImageOverlay({
-    topSpeciesData: dedupedPools.topSpeciesData,
-    thematicStripCards: dedupedPools.thematicStripCards,
-    conservationSnapshot: dedupedPools.conservationSnapshot,
-    signatureSpeciesData: dedupedPools.signatureSpeciesData,
-    imageSources: activeImageSources,
-  })
+  const {
+    signatureSpeciesData,
+    isReady: isSignatureReady,
+  } = useLiveSignatureSpecies(activePlace, commonNameLanguage)
 
   const isFacetsReady =
     !activePlace || facetsQuery.isSuccess || facetsQuery.isError
@@ -258,23 +245,27 @@ export const useLensData = (
     kingdomKeys.length === 0 || taxonLabelsQuery.isSuccess || taxonLabelsQuery.isError
   const isDatasetsReady =
     datasetKeys.length === 0 || datasetQuery.isSuccess || datasetQuery.isError
+
   const isReady =
-    (!enabled ||
+    enabled &&
     isFacetsReady &&
-    isTopSpeciesReady &&
-    isThematicReady &&
-    isConservationReady &&
+    top.isReady &&
+    thematic.isReady &&
+    conservation.isReady &&
     isTaxonLabelsReady &&
     isDatasetsReady &&
-    isSignatureReady &&
-    imaged.isReady)
+    isSignatureReady
 
-  return {
-    ...dedupedPools,
-    isReady,
-    topSpeciesData: imaged.topSpeciesData,
-    thematicStripCards: imaged.thematicStripCards,
-    conservationSnapshot: imaged.conservationSnapshot,
-    signatureSpeciesData: imaged.signatureSpeciesData,
-  }
+  return useMemo(
+    () => ({
+      isReady,
+      placeId: activePlace?.id ?? 'none',
+      summary,
+      top,
+      thematic,
+      conservation,
+      signatureSpeciesData,
+    }),
+    [isReady, activePlace?.id, summary, top, thematic, conservation, signatureSpeciesData],
+  )
 }

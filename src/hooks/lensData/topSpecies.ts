@@ -28,13 +28,21 @@ type TopSpeciesSlotPool = {
   pool: Array<{ speciesKey: number; count: number }>
 }
 
+type SlotCandidates = {
+  slot: HeroSlotRule
+  candidates: SpeciesCard[]
+}
+
+/** Seed-independent candidates for the hero and mini slots. */
+export type TopSpeciesPools = {
+  slots: SlotCandidates[]
+  extraMiniSlots: SlotCandidates[]
+}
+
 const buildCandidates = (
   pools: TopSpeciesSlotPool[],
   speciesByKey: Map<number, Omit<SpeciesCard, 'highlight'>> | undefined,
-): Array<{
-  slot: HeroSlotRule
-  candidates: SpeciesCard[]
-}> =>
+): SlotCandidates[] =>
   pools.map(({ slot, pool }) => {
     const candidates: SpeciesCard[] = []
     for (const candidate of pool) {
@@ -62,16 +70,53 @@ const buildCandidates = (
     return { slot, candidates: viable }
   })
 
-export type TopSpeciesResult = {
-  topSpeciesData: SpeciesCard[]
-  isReady: boolean
+/** Seeded picks for the hero and mini cards. Pure: same pools + seed, same picks. */
+export const selectTopSpecies = (
+  { slots, extraMiniSlots }: TopSpeciesPools,
+  placeId: string,
+  contentSeed: number,
+): SpeciesCard[] => {
+  if (!slots.length) return []
+
+  const pickUnseenForSlot = (
+    candidates: SpeciesCard[],
+    seedKey: string,
+    seen: Set<string>,
+  ) => {
+    const ordered = seededShuffle(candidates, `${seedKey}:order`)
+    return ordered.find((candidate) => !seen.has(candidate.id))
+  }
+
+  const seen = new Set<string>()
+  const picks: SpeciesCard[] = []
+  for (const { slot, candidates } of slots) {
+    if (!candidates.length) continue
+    const chosen = pickUnseenForSlot(candidates, `${placeId}:${slot.id}:${contentSeed}`, seen)
+    if (!chosen) continue
+    seen.add(chosen.id)
+    picks.push(chosen)
+  }
+
+  const shuffledExtraMiniSlots = seededShuffle(
+    extraMiniSlots,
+    `${placeId}:extra-mini-slots:${contentSeed}`,
+  )
+  for (const { slot, candidates } of shuffledExtraMiniSlots) {
+    if (picks.length >= slots.length + EXTRA_MINI_SLOT_COUNT) break
+    if (!candidates.length) continue
+    const chosen = pickUnseenForSlot(candidates, `${placeId}:${slot.id}:${contentSeed}`, seen)
+    if (!chosen) continue
+    seen.add(chosen.id)
+    picks.push(chosen)
+  }
+
+  return picks
 }
 
-export const useTopSpeciesData = (
+export const useTopSpeciesPools = (
   selectedPlace: Place | undefined,
-  contentSeed: number,
   commonNameLanguage: string,
-): TopSpeciesResult => {
+): TopSpeciesPools & { isReady: boolean } => {
   const topSpeciesPoolQuery = useQuery({
     queryKey: ['topSpeciesPool', selectedPlace?.id],
     queryFn: async ({ signal }): Promise<TopSpeciesPoolData> => {
@@ -203,60 +248,13 @@ export const useTopSpeciesData = (
     [topSpeciesPoolQuery.data?.extraMiniSlots, speciesInfoQuery.data],
   )
 
-  const topSpeciesData = useMemo(() => {
-    if (!slots.length) return []
+  const isReady =
+    !selectedPlace ||
+    topSpeciesPoolQuery.isError ||
+    (topSpeciesPoolQuery.isSuccess &&
+      (uniqueSpeciesKeys.length === 0 ||
+        speciesInfoQuery.isSuccess ||
+        speciesInfoQuery.isError))
 
-    const pickUnseenForSlot = (
-      candidates: SpeciesCard[],
-      seedKey: string,
-      seen: Set<string>,
-    ) => {
-      const ordered = seededShuffle(candidates, `${seedKey}:order`)
-      return ordered.find((candidate) => !seen.has(candidate.id))
-    }
-
-    const seen = new Set<string>()
-    const picks: SpeciesCard[] = []
-    for (const { slot, candidates } of slots) {
-      if (!candidates.length) continue
-      const chosen = pickUnseenForSlot(
-        candidates,
-        `${selectedPlace?.id ?? 'none'}:${slot.id}:${contentSeed}`,
-        seen,
-      )
-      if (!chosen) continue
-      seen.add(chosen.id)
-      picks.push(chosen)
-    }
-
-    const shuffledExtraMiniSlots = seededShuffle(
-      extraMiniSlots,
-      `${selectedPlace?.id ?? 'none'}:extra-mini-slots:${contentSeed}`,
-    )
-    for (const { slot, candidates } of shuffledExtraMiniSlots) {
-      if (picks.length >= slots.length + EXTRA_MINI_SLOT_COUNT) break
-      if (!candidates.length) continue
-      const chosen = pickUnseenForSlot(
-        candidates,
-        `${selectedPlace?.id ?? 'none'}:${slot.id}:${contentSeed}`,
-        seen,
-      )
-      if (!chosen) continue
-      seen.add(chosen.id)
-      picks.push(chosen)
-    }
-
-    return picks
-  }, [slots, extraMiniSlots, selectedPlace?.id, contentSeed])
-
-  return {
-    topSpeciesData,
-    isReady:
-      !selectedPlace ||
-      topSpeciesPoolQuery.isError ||
-      (topSpeciesPoolQuery.isSuccess &&
-        (uniqueSpeciesKeys.length === 0 ||
-          speciesInfoQuery.isSuccess ||
-          speciesInfoQuery.isError)),
-  }
+  return useMemo(() => ({ slots, extraMiniSlots, isReady }), [slots, extraMiniSlots, isReady])
 }

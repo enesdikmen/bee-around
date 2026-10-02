@@ -1,16 +1,18 @@
 /**
  * BentoPoster — full-page bento-style biodiversity poster.
  *
- * Tiles come from `buildBentoTiles` and are packed by `gridPacker` into a
- * tight rectangle. Filler tiles pad the layout so cells stay square. The
- * regenerate button reshuffles by bumping a single poster seed.
+ * The poster is a pure function of its state (seed + fixed cards, see
+ * lib/posterState) and the place's data: cards are assembled and packed by
+ * lib/posterLayout. A new poster is only shown once all of its data and
+ * images are ready, so Regenerate swaps the whole poster at once.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import CitySearch from '../components/CitySearch'
 import Loader from '../components/Loader'
-import { useLensData, type LensData } from '../hooks/useLensData'
-import { packWithRetries, type BoxSpec, type Placement } from '../lib/gridPacker'
+import { selectLensData, useLensPools } from '../hooks/useLensData'
+import { useSpeciesImages } from '../hooks/lensData/speciesImages'
+import type { Placement } from '../lib/gridPacker'
 import { printPosterToPdf } from '../lib/printPoster'
 import { usePosterColumns } from '../hooks/usePosterColumns'
 import {
@@ -18,13 +20,18 @@ import {
   UI_LANGUAGES,
   type UiLanguage,
 } from '../i18n/uiText'
+import { posterUrl } from '../lib/shareToken'
 import {
-  encodeLocks,
-  encodeShare,
-  decodeLocks,
-  syncShareToLocation,
-} from '../lib/shareToken'
-import type { LockEntry, LockListState } from '../lib/shareToken'
+  initialPosterState,
+  posterReducer,
+  readPosterParams,
+} from '../lib/posterState'
+import {
+  assemblePosterCards,
+  layoutPoster,
+  type PosterCard,
+  type SeedTiles,
+} from '../lib/posterLayout'
 import type { Place } from '../types/lens'
 import { ALL_IMAGE_SOURCES } from '../api/speciesImage'
 import { countFirstPosterTime } from '../lib/analytics'
@@ -32,12 +39,8 @@ import {
   buildBentoTiles,
   buildSpeciesBackupTiles,
   buildThematicBackupTiles,
-  padToRectangle,
-  POSTER_GRID_AREA,
-  POSTER_GRID_H,
-  POSTER_GRID_W,
-  type Tile,
 } from './bentoTiles'
+import { POSTER_GRID_AREA, POSTER_GRID_H, POSTER_GRID_W } from '../lib/posterGrid'
 import './BentoPoster.css'
 
 type PosterThemeId =
@@ -47,15 +50,17 @@ type PosterThemeId =
   | 'afterdark'
   | 'acidgarden'
 
-const DEFAULT_LOCK_SLOT_IDS = new Set(['title', 'sources'])
 // Only the first poster of a page load is timed: it is what someone opening
 // a shared link waits for, measured from the start of the page load.
 let firstPosterTimed = false
-// Locked slots whose content stays live; only their position is frozen.
-// Both show place-level data that no seed changes. The sightings card's
-// red-list numbers arrive after the poster is shown, so a frozen copy could
-// keep the loading placeholder.
-const LIVE_LOCKED_SLOT_IDS = new Set(['sources', 'sightings'])
+
+/** A complete poster, ready to show. */
+type PosterView = {
+  placeId: string
+  cols: number
+  cards: PosterCard[]
+  placements: Map<string, Placement>
+}
 
 interface Props {
   selectedPlace: Place
@@ -66,10 +71,10 @@ interface Props {
   commonNameLanguage: UiLanguage
   onLanguageChange: (language: UiLanguage) => void
   onShowAbout?: () => void
-  /** Optional seed restored from a shared URL. */
+  /** Seed from a shared URL. */
   initialSeed?: number
-  /** Optional lock list restored from URL (`l=` param). */
-  initialLocks?: LockListState
+  /** URL params of a shared link; fixed cards are read from them. */
+  initialParams?: URLSearchParams
 }
 
 function BentoPoster({
@@ -82,13 +87,8 @@ function BentoPoster({
   onLanguageChange,
   onShowAbout,
   initialSeed,
-  initialLocks,
+  initialParams,
 }: Props) {
-  // Single seed for poster-level variation. Layout and data already consume it;
-  // future style themes should derive from this same seed as well.
-  const [posterSeed, setPosterSeed] = useState(
-    initialSeed && Number.isFinite(initialSeed) ? initialSeed : 1,
-  )
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false)
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false)
   const uiText = getUiText(commonNameLanguage)
@@ -120,96 +120,146 @@ function BentoPoster({
   // `src/api/speciesImage.ts`.
   const effectiveSources = ALL_IMAGE_SOURCES
 
-  // Per-card locks freeze tile content + position across Regenerate.
-  // Unlock is visual-only until next Regenerate (via unlockOverrides).
-  // Each lock stores its own captureSeed for mixed-seed restore.
-  type Lock = { tile: Tile; x: number; y: number; captureSeed: number }
-  const [locks, setLocks] = useState<Map<string, Lock>>(new Map())
-  // Recently unlocked tiles stay visually frozen until the next Regenerate.
-  // This keeps lock/unlock actions from swapping species immediately.
-  const [unlockOverrides, setUnlockOverrides] = useState<Map<string, Lock>>(new Map())
-  const [unlockedDefaultSlotIds, setUnlockedDefaultSlotIds] = useState<Set<string>>(
-    () => new Set(initialLocks?.unlockedDefaultSlotIds ?? []),
-  )
-  // True once the user has explicitly touched locks (added, removed, or
-  // unlocked a default). Controls whether `l=` appears in the URL.
-  const [userManagedLocks, setUserManagedLocks] = useState<boolean>(
-    initialLocks?.present ?? false,
-  )
-  // Pending URL lock entries waiting to be resolved against loaded tiles.
-  // Kept in state so effects/UI can gate while restore is in flight.
-  const [pendingLocks, setPendingLocks] = useState<LockEntry[] | null>(
-    initialLocks?.present && initialLocks.locks.length > 0
-      ? initialLocks.locks
-      : null,
-  )
-  // Active seed for lock restore. We process one captureSeed at a time.
-  const [restoreSeed, setRestoreSeed] = useState<number | null>(
-    initialLocks?.present && initialLocks.locks.length > 0
-      ? initialLocks.locks[0].captureSeed
-      : null,
-  )
-
-  // Current-seed data feeds unlocked tiles. The lockData hook is parked
-  // at the active restore seed (or mirrors posterSeed when nothing is
-  // being restored — cheap react-query cache hit in that case).
-  const data = useLensData(selectedPlace, {
-    imageSources: effectiveSources,
-    contentSeed: posterSeed,
-    commonNameLanguage,
-  })
-  const isLockRestoreActive = pendingLocks !== null && restoreSeed !== null
-  const lockData = useLensData(selectedPlace, {
-    imageSources: effectiveSources,
-    contentSeed: restoreSeed ?? posterSeed,
-    commonNameLanguage,
-    enabled: isLockRestoreActive,
+  // ── State: the seed and the fixed (locked or held) cards ───────────────
+  const [state, dispatch] = useReducer(posterReducer, undefined, () => {
+    const seed = initialSeed && Number.isFinite(initialSeed) ? initialSeed : 1
+    return initialParams
+      ? readPosterParams(initialParams, seed, GRID_W)
+      : initialPosterState(seed, GRID_W)
   })
 
-  // Freeze visual output to the last fully-ready snapshot per (place,
-  // sources). Avoids partial card churn while async pieces settle. Locks
-  // are rendered from their stored tile objects (the locks Map), so the
-  // snapshot only needs to track current-seed data.
-  const snapshotKey = useMemo(
-    () => `${selectedPlace?.id ?? 'none'}::${effectiveSources.join(',')}`,
-    [selectedPlace?.id, effectiveSources],
+  // A new place starts from the default locks. Reset during render so the
+  // old place's fixed cards are never applied to the new place's data.
+  const [statePlaceId, setStatePlaceId] = useState(selectedPlace.id)
+  if (statePlaceId !== selectedPlace.id) {
+    setStatePlaceId(selectedPlace.id)
+    dispatch({ type: 'reset', cols: GRID_W })
+  }
+
+  // ── Data: fetched once per place, selected per seed ───────────────────
+  const pools = useLensPools(selectedPlace, commonNameLanguage)
+  // The current poster plus every poster a fixed card was captured from.
+  const seedsKey = Array.from(
+    new Set([state.seed, ...state.locks.map((c) => c.seed), ...state.held.map((c) => c.seed)]),
   )
-  const [committedSnapshot, setCommittedSnapshot] = useState<{
-    key: string
-    data: LensData
-  } | null>(null)
-  const wasDataReadyRef = useRef(false)
-  const previousLanguageRef = useRef(commonNameLanguage)
+    .sort((a, b) => a - b)
+    .join(',')
+  const posters = useMemo(
+    () =>
+      pools.isReady
+        ? seedsKey.split(',').map((seed) => ({
+            seed: Number(seed),
+            data: selectLensData(pools, Number(seed)),
+          }))
+        : [],
+    [pools, seedsKey],
+  )
+  const posterData = useMemo(() => posters.map((p) => p.data), [posters])
+  const { applyImages, isReady: imagesReady } = useSpeciesImages(posterData, effectiveSources)
+  const isComplete = pools.isReady && imagesReady && posters.length > 0
+
+  // The address bar and the sources QR code both come from the state.
+  const shareUrl = useMemo(() => {
+    const url = posterUrl(selectedPlace, state, commonNameLanguage, theme)
+    url.hash = ''
+    return url.toString()
+  }, [selectedPlace, state, commonNameLanguage, theme])
 
   useEffect(() => {
-    const becameReady = data.isReady && !wasDataReadyRef.current
-    const keyChanged = committedSnapshot?.key !== snapshotKey
-    if (data.isReady && (becameReady || keyChanged)) {
-      setCommittedSnapshot({ key: snapshotKey, data })
+    const next = posterUrl(selectedPlace, state, commonNameLanguage, theme).toString()
+    if (next !== window.location.href) window.history.replaceState(null, '', next)
+  }, [selectedPlace, state, commonNameLanguage, theme])
+
+  // ── View: assemble and pack a complete poster ─────────────────────────
+  const assembled = useMemo(() => {
+    if (!isComplete) return null
+    const dataBySeed = new Map(posters.map((p) => [p.seed, applyImages(p.data)]))
+    const tilesBySeed = new Map<number, SeedTiles>()
+    const tilesFor = (seed: number): SeedTiles => {
+      const cached = tilesBySeed.get(seed)
+      if (cached) return cached
+      const data = dataBySeed.get(seed)
+      const tiles: SeedTiles = data
+        ? {
+            main: buildBentoTiles({
+              placeName,
+              latitude,
+              longitude,
+              data,
+              contentSeed: seed,
+              shareUrl,
+              language: commonNameLanguage,
+              uiText,
+            }),
+            backups: [
+              ...buildThematicBackupTiles(data, commonNameLanguage, uiText),
+              ...buildSpeciesBackupTiles(data, commonNameLanguage, uiText),
+            ],
+          }
+        : { main: [], backups: [] }
+      tilesBySeed.set(seed, tiles)
+      return tiles
     }
-    wasDataReadyRef.current = data.isReady
-  }, [data, snapshotKey, committedSnapshot?.key])
+    const cards = assemblePosterCards(state, GRID_W, tilesFor)
+    return {
+      cards,
+      seed: state.seed,
+      cols: GRID_W,
+      key: `${state.seed}|${GRID_W}|${cards.map((c) => c.id).join(',')}`,
+    }
+  }, [isComplete, posters, applyImages, state, GRID_W, shareUrl, placeName, latitude, longitude, commonNameLanguage, uiText])
 
-  // When language changes, re-resolve currently locked slots from their
-  // original captureSeed so names localize without altering species picks
-  // or tile positions.
+  // Packing is kept while the same cards sit in the same places, so locking,
+  // unlocking or switching language never reshuffles the poster. It is
+  // recomputed during render (not in an effect) so no frame shows a stale layout.
+  const [layout, setLayout] = useState<{ key: string; cards: PosterCard[]; placements: Placement[] } | null>(null)
+  let currentLayout = layout
+  if (assembled) {
+    const reusable =
+      layout?.key === assembled.key &&
+      assembled.cards.every((c) => {
+        if (!c.pinXY) return true
+        const p = layout.placements.find((pl) => pl.id === c.id)
+        return p?.x === c.pinXY.x && p?.y === c.pinXY.y
+      })
+    if (!reusable) {
+      currentLayout = { key: assembled.key, ...layoutPoster(assembled.cards, assembled.cols, assembled.seed) }
+      setLayout(currentLayout)
+    }
+  }
+
+  const view = useMemo<PosterView | null>(() => {
+    if (!assembled || !currentLayout) return null
+    // Refresh content (images, language) on the kept layout.
+    const byId = new Map(assembled.cards.map((c) => [c.id, c]))
+    return {
+      placeId: selectedPlace.id,
+      cols: assembled.cols,
+      cards: currentLayout.cards.map((c) => byId.get(c.id) ?? c),
+      placements: new Map(currentLayout.placements.map((p) => [p.id, p])),
+    }
+  }, [assembled, currentLayout, selectedPlace.id])
+
+  // Keep showing the last complete poster while the next one loads.
+  const [lastView, setLastView] = useState<PosterView | null>(null)
+  if (view && view !== lastView) setLastView(view)
+  const shownView = view ?? lastView
+  // The loader covers the first poster of a place; Regenerate and language
+  // changes keep the previous poster up until the new one is complete.
+  const isLoadingSnapshot = !view && shownView?.placeId !== selectedPlace.id
+  const isToolbarDisabled = isLoadingSnapshot
+  // Menus never show over the loader.
+  const showThemeMenu = isThemeMenuOpen && !isToolbarDisabled
+  const showLanguageMenu = isLanguageMenuOpen && !isToolbarDisabled
+  const shownCols = shownView?.cols ?? GRID_W
+  const shownRows = POSTER_GRID_AREA / shownCols
+  const lockedSlotIds = useMemo(() => new Set(state.locks.map((c) => c.slotId)), [state.locks])
+
   useEffect(() => {
-    if (previousLanguageRef.current === commonNameLanguage) return
-    previousLanguageRef.current = commonNameLanguage
-    if (pendingLocks !== null) return
-    if (locks.size === 0) return
-
-    const refreshLocks = Array.from(locks.entries()).map(([slotId, l]) => ({
-      slotId,
-      x: l.x,
-      y: l.y,
-      captureSeed: l.captureSeed,
-    }))
-    if (refreshLocks.length === 0) return
-
-    setPendingLocks(refreshLocks)
-    setRestoreSeed(refreshLocks[0].captureSeed)
-  }, [commonNameLanguage, locks, pendingLocks])
+    if (isLoadingSnapshot || firstPosterTimed) return
+    firstPosterTimed = true
+    countFirstPosterTime(performance.now() / 1000)
+  }, [isLoadingSnapshot])
 
   useEffect(() => {
     if (!isLanguageMenuOpen && !isThemeMenuOpen) return
@@ -239,108 +289,6 @@ function BentoPoster({
     }
   }, [isLanguageMenuOpen, isThemeMenuOpen])
 
-  const displayData = data.isReady ? data : committedSnapshot?.data ?? null
-  // Only show the loading overlay while waiting on the *first* ready
-  // snapshot for the current place/sources. Regenerate keeps `snapshotKey`
-  // unchanged so tiles update in place as new species images stream in.
-  const isLoadingSnapshot =
-    !displayData || committedSnapshot?.key !== snapshotKey || pendingLocks !== null
-  const isToolbarDisabled = isLoadingSnapshot
-
-  useEffect(() => {
-    if (isLoadingSnapshot || firstPosterTimed) return
-    firstPosterTimed = true
-    countFirstPosterTime(performance.now() / 1000)
-  }, [isLoadingSnapshot])
-
-  useEffect(() => {
-    if (!isToolbarDisabled) return
-    setIsThemeMenuOpen(false)
-    setIsLanguageMenuOpen(false)
-  }, [isToolbarDisabled])
-
-  // Reset lock state when the place or image sources change.
-  const placeKeyRef = useRef<string | null>(null)
-  useEffect(() => {
-    const key = `${selectedPlace?.id ?? 'none'}::${effectiveSources.join(',')}`
-    if (placeKeyRef.current === null) {
-      placeKeyRef.current = key
-      return
-    }
-    if (placeKeyRef.current === key) return
-    placeKeyRef.current = key
-    setLocks((prev) => (prev.size === 0 ? prev : new Map()))
-    setUnlockOverrides((prev) => (prev.size === 0 ? prev : new Map()))
-    setUnlockedDefaultSlotIds((prev) => (prev.size === 0 ? prev : new Set()))
-    setUserManagedLocks(false)
-    setDidInitDefaultLocks(false)
-    setPendingLocks(null)
-    setRestoreSeed(null)
-  }, [selectedPlace?.id, effectiveSources])
-
-  // Encode the current lock state into URL form. Centralised so the URL
-  // sync effect and the dev-mode round-trip assertion stay in lockstep.
-  const currentLockEntries = useMemo<LockEntry[]>(
-    () =>
-      Array.from(locks.entries()).map(([slotId, l]) => ({
-        slotId,
-        x: l.x,
-        y: l.y,
-        captureSeed: l.captureSeed,
-      })),
-    [locks],
-  )
-  const currentUnlockedDefaultSlotIds = useMemo(
-    () => Array.from(unlockedDefaultSlotIds),
-    [unlockedDefaultSlotIds],
-  )
-
-  // Keep the address bar in sync with current place + seed + locks.
-  // Skip while URL-restored locks are still pending — otherwise the
-  // first mount of a tab with `l=...` in the URL would briefly write
-  // back a partial `l=` (locks Map is empty until the restore effect
-  // runs), clobbering the URL for any concurrent reader (QR code,
-  // copy-link, etc.).
-  useEffect(() => {
-    if (!selectedPlace) return
-    if (pendingLocks !== null) return
-    const lockState = userManagedLocks
-      ? {
-          locks: currentLockEntries,
-          unlockedDefaultSlotIds: currentUnlockedDefaultSlotIds,
-        }
-      : null
-    syncShareToLocation(
-      selectedPlace,
-      posterSeed,
-      lockState,
-      commonNameLanguage,
-      theme,
-    )
-
-    // Dev assertion: paste → decode → state → encode is a fixed point.
-    if (import.meta.env.DEV && lockState) {
-      const encoded = encodeLocks(lockState.locks)
-      const decoded = decodeLocks(encoded)
-      const reencoded = encodeLocks(decoded.locks)
-      if (encoded !== reencoded) {
-        console.warn(
-          '[locks] encode/decode round-trip mismatch:',
-          { encoded, reencoded, decoded },
-        )
-      }
-    }
-  }, [
-    selectedPlace,
-    posterSeed,
-    currentLockEntries,
-    currentUnlockedDefaultSlotIds,
-    userManagedLocks,
-    pendingLocks,
-    commonNameLanguage,
-    theme,
-  ])
-
   const handleDownloadPdf = () => {
     if (isToolbarDisabled) return
     // On a narrow viewport the poster is packed at 2 or 3 columns. Re-pack to
@@ -355,13 +303,13 @@ function BentoPoster({
       gridW: POSTER_GRID_W,
       gridH: POSTER_GRID_H,
       placeName,
-      seed: posterSeed,
+      seed: state.seed,
     })
   }
 
   useEffect(() => {
     if (!pendingPrintRef.current) return
-    if (!forcePosterWide || GRID_W !== POSTER_GRID_W) return
+    if (!forcePosterWide || shownView?.cols !== POSTER_GRID_W) return
     pendingPrintRef.current = false
     const restoreNarrowLayout = () => {
       setForcePosterWide(false)
@@ -372,387 +320,29 @@ function BentoPoster({
       gridW: POSTER_GRID_W,
       gridH: POSTER_GRID_H,
       placeName,
-      seed: posterSeed,
+      seed: state.seed,
     })
-  }, [forcePosterWide, GRID_W, placeName, posterSeed])
+  }, [forcePosterWide, shownView?.cols, placeName, state.seed])
 
-  // Helper: build the unpadded tile list at a specific seed against a
-  // given data snapshot. Used twice — once for current-seed unlocked
-  // tiles and once for lock-seed locked tiles. Padding is deferred until
-  // *after* lock merging so the final area is always `POSTER_GRID_AREA`.
-  const buildTilesAt = (
-    snapshot: LensData | null,
-    seed: number,
-  ): Tile[] => {
-    if (!snapshot) return []
-    let shareUrl: string | undefined
-    if (typeof window !== 'undefined' && selectedPlace) {
-      const url = new URL(window.location.href)
-      url.searchParams.set('s', encodeShare(selectedPlace, seed))
-      url.searchParams.set('lang', commonNameLanguage)
-      shareUrl = url.toString()
+  const toggleLock = (card: PosterCard, at: Placement) => {
+    if (isToolbarDisabled || !card.slotId || !shownView) return
+    const shown = new Map<string, { x: number; y: number }>()
+    for (const c of shownView.cards) {
+      const p = shownView.placements.get(c.id)
+      if (c.slotId && p) shown.set(c.slotId, { x: p.x, y: p.y })
     }
-    return buildBentoTiles({
-      placeName,
-      latitude,
-      longitude,
-      data: snapshot,
-      contentSeed: seed,
-      shareUrl,
-      language: commonNameLanguage,
-      uiText,
-    })
-  }
-
-  const baseTiles = useMemo(
-    () => buildTilesAt(displayData, posterSeed),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [placeName, latitude, longitude, displayData, posterSeed, selectedPlace, commonNameLanguage, uiText],
-  )
-
-  // Default locks: title top-left, sources bottom-right. A shared URL may
-  // restore custom locks while still relying on these implicit defaults; only
-  // skip a default slot when the URL records that the user unlocked it.
-  const [didInitDefaultLocks, setDidInitDefaultLocks] = useState(false)
-  useLayoutEffect(() => {
-    if (didInitDefaultLocks) return
-    const urlExplicitlyClearedAllLocks =
-      initialLocks?.present &&
-      initialLocks.locks.length === 0 &&
-      (initialLocks.unlockedDefaultSlotIds?.length ?? 0) === 0
-    if (urlExplicitlyClearedAllLocks) {
-      setDidInitDefaultLocks(true)
-      return
-    }
-    if (pendingLocks !== null) return
-    if (baseTiles.length === 0) return
-    // Prevent default-lock capture from a stale place snapshot.
-    if (committedSnapshot?.key !== snapshotKey) return
-    const title = baseTiles.find((t) => t.slotId === 'title')
-    const sources = baseTiles.find((t) => t.slotId === 'sources')
-    if (!title && !sources) {
-      setDidInitDefaultLocks(true)
-      return
-    }
-    // Default locks anchor at the current seed.
-    const captureSeed = posterSeed
-    let addedAny = false
-    setLocks((prev) => {
-      const next = new Map(prev)
-      if (title && !unlockedDefaultSlotIds.has('title') && !next.has('title')) {
-        next.set('title', { tile: title, x: 0, y: 0, captureSeed })
-        addedAny = true
-      }
-      if (sources && !unlockedDefaultSlotIds.has('sources') && !next.has('sources')) {
-        next.set('sources', {
-          tile: sources,
-          x: GRID_W - sources.w,
-          y: POSTER_GRID_H - sources.h,
-          captureSeed,
-        })
-        addedAny = true
-      }
-      return addedAny ? next : prev
-    })
-    setDidInitDefaultLocks(true)
-  }, [pendingLocks, baseTiles, didInitDefaultLocks, initialLocks, unlockedDefaultSlotIds, posterSeed, GRID_W, committedSnapshot?.key, snapshotKey])
-
-  // Restore URL locks one captureSeed at a time.
-  // Missing slots at a seed are dropped with a dev warning.
-  useEffect(() => {
-    if (!pendingLocks || restoreSeed === null) return
-    if (!lockData.isReady) return
-    // Build tiles at exactly `restoreSeed` using freshly-fetched lockData.
-    let restoreShareUrl: string | undefined
-    if (typeof window !== 'undefined' && selectedPlace) {
-      const url = new URL(window.location.href)
-      url.searchParams.set('s', encodeShare(selectedPlace, restoreSeed))
-      url.searchParams.set('lang', commonNameLanguage)
-      restoreShareUrl = url.toString()
-    }
-    const restoredTiles = [
-      ...buildBentoTiles({
-      placeName,
-      latitude,
-      longitude,
-      data: lockData,
-      contentSeed: restoreSeed,
-      shareUrl: restoreShareUrl,
-      language: commonNameLanguage,
-      uiText,
-      }),
-      ...buildThematicBackupTiles(lockData, commonNameLanguage, uiText),
-    ]
-    const resolved = new Map<string, Lock>()
-    const remaining: LockEntry[] = []
-    for (const entry of pendingLocks) {
-      if (entry.captureSeed !== restoreSeed) {
-        remaining.push(entry)
-        continue
-      }
-      const tile = restoredTiles.find((t) => t.slotId === entry.slotId)
-      if (!tile) {
-        if (import.meta.env.DEV) {
-          console.warn(
-            `[locks] could not resolve slot "${entry.slotId}" at captureSeed=${entry.captureSeed}; dropping entry`,
-          )
-        }
-        // Intentionally not pushed to remaining → done after this pass.
-        continue
-      }
-      resolved.set(entry.slotId, {
-        tile,
-        x: entry.x,
-        y: entry.y,
-        captureSeed: entry.captureSeed,
+    if (lockedSlotIds.has(card.slotId)) {
+      dispatch({ type: 'unlock', slotId: card.slotId, cols: shownView.cols, shown })
+    } else {
+      dispatch({
+        type: 'lock',
+        // The seed the visible content came from, which is not always the
+        // current seed (e.g. a card kept after unlocking).
+        card: { slotId: card.slotId, seed: card.sourceSeed, x: at.x, y: at.y },
+        cols: shownView.cols,
+        shown,
       })
     }
-    setLocks((prev) => {
-      const next = new Map(prev)
-      // Replace every slot captured at this seed with freshly resolved
-      // tiles (or drop when no longer resolvable).
-      for (const entry of pendingLocks) {
-        if (entry.captureSeed === restoreSeed) next.delete(entry.slotId)
-      }
-      for (const [slotId, lock] of resolved) next.set(slotId, lock)
-      return next
-    })
-    if (remaining.length === 0) {
-      setPendingLocks(null)
-      setRestoreSeed(null)
-      return
-    }
-    setPendingLocks(remaining)
-    setRestoreSeed(remaining[0].captureSeed)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingLocks, restoreSeed, lockData.isReady])
-
-  const tiles = useMemo(() => {
-    // Apply locks: replace locked slots with their frozen snapshot, drop
-    // unlocked tiles that would duplicate a locked/override species, and
-    // append any locked/override slots that aren't emitted by the fresh
-    // build.
-    const lockedSlotIds = new Set(locks.keys())
-    const overrideSlotIds = new Set(unlockOverrides.keys())
-    const lockedSpeciesIds = new Set<string>()
-    for (const lock of locks.values()) {
-      for (const sid of lock.tile.speciesIds ?? []) lockedSpeciesIds.add(sid)
-    }
-    for (const override of unlockOverrides.values()) {
-      for (const sid of override.tile.speciesIds ?? []) lockedSpeciesIds.add(sid)
-    }
-    const seenSlots = new Set<string>()
-    const merged: Tile[] = []
-    for (const t of baseTiles) {
-      if (t.slotId && lockedSlotIds.has(t.slotId)) {
-        const lock = locks.get(t.slotId)!
-        // Keep live slots current while preserving their locked position.
-        // Other locked slots stay fully frozen.
-        if (LIVE_LOCKED_SLOT_IDS.has(t.slotId)) {
-          merged.push({ ...t, pinXY: { x: lock.x, y: lock.y } })
-        } else {
-          merged.push({ ...lock.tile, pinXY: { x: lock.x, y: lock.y } })
-        }
-        seenSlots.add(t.slotId)
-        continue
-      }
-      if (t.slotId && overrideSlotIds.has(t.slotId)) {
-        const lock = unlockOverrides.get(t.slotId)!
-        merged.push({ ...lock.tile })
-        seenSlots.add(t.slotId)
-        continue
-      }
-      // Drop any unlocked tile showing a species already claimed by a lock.
-      if (t.speciesIds && t.speciesIds.some((id) => lockedSpeciesIds.has(id))) continue
-      merged.push(t)
-    }
-    // Locked slots that no longer appear in the fresh build (e.g. a thematic
-    // strip that dropped out for this seed) still need to be rendered — but
-    // only while they fit. Appending a stale locked tile onto an already-full
-    // 24-cell grid would make the tile set unpackable, so `pack()` returns
-    // null and the whole poster renders empty. Guard the running area so the
-    // merged set is always within `POSTER_GRID_AREA` and stays packable.
-    let usedArea = merged.reduce((sum, t) => sum + t.w * t.h, 0)
-    for (const [slotId, lock] of locks) {
-      if (seenSlots.has(slotId)) continue
-      const area = lock.tile.w * lock.tile.h
-      if (usedArea + area > POSTER_GRID_AREA) continue
-      merged.push({ ...lock.tile, pinXY: { x: lock.x, y: lock.y } })
-      usedArea += area
-    }
-    for (const [slotId, lock] of unlockOverrides) {
-      if (seenSlots.has(slotId)) continue
-      const area = lock.tile.w * lock.tile.h
-      if (usedArea + area > POSTER_GRID_AREA) continue
-      merged.push({ ...lock.tile })
-      usedArea += area
-    }
-
-    // Optional thematic fallback: if lock collisions made us short, use up
-    // to two precomputed backup thematics before inserting invisible filler.
-    const mergedArea = usedArea
-    if (mergedArea < POSTER_GRID_AREA && displayData) {
-      let missingArea = POSTER_GRID_AREA - mergedArea
-      const occupiedSlotIds = new Set(
-        merged
-          .map((t) => t.slotId)
-          .filter((slotId): slotId is string => !!slotId),
-      )
-      const occupiedIds = new Set(merged.map((t) => t.id))
-      const occupiedSpeciesIds = new Set<string>()
-      for (const tile of merged) {
-        for (const sid of tile.speciesIds ?? []) occupiedSpeciesIds.add(sid)
-      }
-
-      const tryAppendBackups = (backups: Tile[]) => {
-        for (const backup of backups) {
-          if (missingArea <= 0) break
-          const area = backup.w * backup.h
-          if (area > missingArea) continue
-          const hasSameSlot = !!backup.slotId && occupiedSlotIds.has(backup.slotId)
-          const hasSameId = occupiedIds.has(backup.id)
-          const collidesWithVisibleSpecies =
-            !!backup.speciesIds?.some((id) => occupiedSpeciesIds.has(id))
-          if (hasSameSlot || hasSameId || collidesWithVisibleSpecies) continue
-
-          merged.push(backup)
-          occupiedIds.add(backup.id)
-          if (backup.slotId) occupiedSlotIds.add(backup.slotId)
-          for (const sid of backup.speciesIds ?? []) occupiedSpeciesIds.add(sid)
-          missingArea -= area
-        }
-      }
-
-      // 1) Try thematic backups (extra themes that survived dedup).
-      tryAppendBackups(
-        buildThematicBackupTiles(displayData, commonNameLanguage, uiText),
-      )
-      // 2) Then unused threatened/signature species — covers cases where
-      //    atRisk/signature builds emitted fewer tiles than expected (e.g.
-      //    sparse threatened pool) or where lock collisions dropped a
-      //    tile and no thematic backup was free of conflicts.
-      if (missingArea > 0) {
-        tryAppendBackups(
-          buildSpeciesBackupTiles(displayData, commonNameLanguage, uiText),
-        )
-      }
-    }
-
-    // Pad here (after locks) so the poster always has exactly
-    // `POSTER_GRID_AREA` cells, no matter how many tiles locks added/dropped.
-    return padToRectangle(merged, GRID_W, POSTER_GRID_AREA)
-  }, [baseTiles, locks, unlockOverrides, GRID_W, displayData, commonNameLanguage, uiText])
-
-  // Pack the tiles into the fixed poster grid.
-  //
-  // We cache the pack result and re-use it whenever the seed/tile-set
-  // is unchanged. This is what makes a Lock toggle a pure metadata update:
-  // locking a card adds `pinXY` to one tile but does not change the tile id
-  // list, so the cached placements are kept and nothing else on the poster
-  // shuffles. A real Regenerate bumps `posterSeed`, which busts the cache.
-  const packCacheRef = useRef<{
-    key: string
-    placements: Placement[]
-    gridH: number
-  } | null>(null)
-  const { placements, gridH } = useMemo(() => {
-    const cacheKey = `${posterSeed}|${GRID_W}|d:${didInitDefaultLocks ? 1 : 0}|${tiles
-      .map((t) => t.id)
-      .join(',')}`
-    if (packCacheRef.current?.key === cacheKey) {
-      return {
-        placements: packCacheRef.current.placements,
-        gridH: packCacheRef.current.gridH,
-      }
-    }
-    const h = POSTER_GRID_AREA / GRID_W
-      // Hard pins are resolved against the *current* grid height attempt so
-      // that e.g. `bottom-right` always means the actual bottom-right corner.
-      const specs: BoxSpec[] = tiles.map((t) => {
-        // Lock-card pin: freeze to an exact (x,y) regardless of corner.
-        // Clamp y defensively to guarantee locked tiles stay in-bounds.
-        if (t.pinXY) {
-          const x = Math.max(0, Math.min(GRID_W - t.w, t.pinXY.x))
-          const y = Math.max(0, Math.min(h - t.h, t.pinXY.y))
-          return { id: t.id, w: t.w, h: t.h, constraint: { pin: { x, y } } }
-        }
-        if (t.pin) {
-          const x = t.pin === 'top-right' || t.pin === 'bottom-right' ? GRID_W - t.w : 0
-          const y = t.pin === 'bottom-left' || t.pin === 'bottom-right' ? h - t.h : 0
-          return { id: t.id, w: t.w, h: t.h, constraint: { pin: { x, y } } }
-        }
-        if (t.anchor) {
-          return { id: t.id, w: t.w, h: t.h, constraint: { anchor: t.anchor } }
-        }
-        return { id: t.id, w: t.w, h: t.h }
-      })
-      const layoutSeed = posterSeed * 7919
-      const r = packWithRetries({ width: GRID_W, height: h, boxes: specs, seed: layoutSeed }, 60)
-      if (r) {
-        packCacheRef.current = { key: cacheKey, placements: r.placements, gridH: h }
-        return { placements: r.placements, gridH: h }
-      }
-    return { placements: [], gridH: POSTER_GRID_AREA / GRID_W }
-  }, [tiles, posterSeed, GRID_W, didInitDefaultLocks])
-
-  const placementById = useMemo(() => {
-    const m = new Map<string, (typeof placements)[number]>()
-    for (const p of placements) m.set(p.id, p)
-    return m
-  }, [placements])
-
-  const toggleLock = (t: Tile, p: { x: number; y: number }) => {
-    if (isLoadingSnapshot) return
-    if (!t.slotId) return
-    const slotId = t.slotId
-    setUserManagedLocks(true)
-    const isLockedNow = locks.has(slotId)
-
-    // Unlock: keep the currently visible tile frozen until next Regenerate
-    // so unlock itself does not swap species/content.
-    if (isLockedNow) {
-      if (DEFAULT_LOCK_SLOT_IDS.has(slotId)) {
-        setUnlockedDefaultSlotIds((prev) => {
-          if (prev.has(slotId)) return prev
-          const next = new Set(prev)
-          next.add(slotId)
-          return next
-        })
-      }
-      setUnlockOverrides((prev) => {
-        const next = new Map(prev)
-        next.set(slotId, { tile: t, x: p.x, y: p.y, captureSeed: posterSeed })
-        return next
-      })
-      setLocks((prev) => {
-        if (!prev.has(slotId)) return prev
-        const next = new Map(prev)
-        next.delete(slotId)
-        return next
-      })
-      return
-    }
-
-    // Lock: clear any temporary override and freeze exactly what is visible.
-    if (DEFAULT_LOCK_SLOT_IDS.has(slotId)) {
-      setUnlockedDefaultSlotIds((prev) => {
-        if (!prev.has(slotId)) return prev
-        const next = new Set(prev)
-        next.delete(slotId)
-        return next
-      })
-    }
-    setUnlockOverrides((prev) => {
-      if (!prev.has(slotId)) return prev
-      const next = new Map(prev)
-      next.delete(slotId)
-      return next
-    })
-    setLocks((prev) => {
-      const next = new Map(prev)
-      next.set(slotId, { tile: t, x: p.x, y: p.y, captureSeed: posterSeed })
-      return next
-    })
   }
 
   return (
@@ -771,8 +361,7 @@ function BentoPoster({
           disabled={isToolbarDisabled}
           onClick={() => {
             if (isToolbarDisabled) return
-            setUnlockOverrides((prev) => (prev.size === 0 ? prev : new Map()))
-            setPosterSeed((s) => s + 1)
+            dispatch({ type: 'regenerate' })
           }}
           title={uiText.toolbar.regenerateTitle}
         >
@@ -810,7 +399,7 @@ function BentoPoster({
             title={uiText.toolbar.theme}
             aria-label={uiText.toolbar.theme}
             aria-haspopup="menu"
-            aria-expanded={isThemeMenuOpen}
+            aria-expanded={showThemeMenu}
             disabled={isToolbarDisabled}
             onClick={() =>
               setIsThemeMenuOpen((open) => {
@@ -823,7 +412,7 @@ function BentoPoster({
           >
             <span className="bento-toolbar__theme-trigger-swatch" aria-hidden="true" />
           </button>
-          {isThemeMenuOpen && (
+          {showThemeMenu && (
             <div className="bento-toolbar__theme-popover" role="menu" aria-label={uiText.toolbar.theme}>
               {themeOptions.map((option) => {
                 const isActive = option.id === theme
@@ -855,7 +444,7 @@ function BentoPoster({
             title={uiText.toolbar.language}
             aria-label={uiText.toolbar.languageAria}
             aria-haspopup="menu"
-            aria-expanded={isLanguageMenuOpen}
+            aria-expanded={showLanguageMenu}
             disabled={isToolbarDisabled}
             onClick={() =>
               setIsLanguageMenuOpen((open) => {
@@ -872,7 +461,7 @@ function BentoPoster({
               <path d="M12 3.5c-2.3 2.4-3.6 5.4-3.6 8.5S9.7 18.1 12 20.5" />
             </svg>
           </button>
-          {isLanguageMenuOpen && (
+          {showLanguageMenu && (
             <div className="bento-toolbar__menu-popover" role="menu" aria-label={uiText.toolbar.language}>
               {UI_LANGUAGES.map((option) => {
                 const isActive = option.code === commonNameLanguage
@@ -902,16 +491,16 @@ function BentoPoster({
         <div
           className="bento-grid"
           style={{
-            gridTemplateColumns: `repeat(${GRID_W}, 1fr)`,
-            gridTemplateRows: `repeat(${gridH}, 1fr)`,
-            aspectRatio: `${GRID_W} / ${gridH}`,
+            gridTemplateColumns: `repeat(${shownCols}, 1fr)`,
+            gridTemplateRows: `repeat(${shownRows}, 1fr)`,
+            aspectRatio: `${shownCols} / ${shownRows}`,
           }}
         >
           <AnimatePresence>
-            {tiles.map((t) => {
-              const p = placementById.get(t.id)
+            {(shownView?.cards ?? []).map((t) => {
+              const p = shownView?.placements.get(t.id)
               if (!p) return null
-              const isLocked = !!t.slotId && locks.has(t.slotId)
+              const isLocked = !!t.slotId && lockedSlotIds.has(t.slotId)
               const canLock = !!t.slotId && !t.className.includes('bento-card--filler')
               const tileKey = t.slotId ? `slot-${t.slotId}` : `tile-${t.id}`
               const className = [
@@ -931,7 +520,7 @@ function BentoPoster({
                       className={
                         'bento-lock-btn' + (isLocked ? ' bento-lock-btn--on' : '')
                       }
-                      onClick={() => toggleLock(t, { x: p.x, y: p.y })}
+                      onClick={() => toggleLock(t, p)}
                       title={isLocked ? uiText.toolbar.unlockCardTitle : uiText.toolbar.lockCardTitle}
                       aria-label={isLocked ? uiText.toolbar.unlockCard : uiText.toolbar.lockCard}
                       aria-pressed={isLocked}

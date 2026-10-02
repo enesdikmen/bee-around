@@ -22,10 +22,14 @@ import { resolveSpeciesCards, type SpeciesPick } from './speciesCards'
  * We return all 3 themes in a deterministic shuffled order; dedup picks
  * the first 2 that still have surviving candidates after filtering.
  */
-export type ThematicLensResult = {
-  thematicStripCards: ThematicStripCard[]
-  isReady: boolean
+/** Seed-independent candidate species per theme. */
+export type ThematicPools = {
+  speciesByTheme: Partial<Record<ThematicStripCard['id'], SpeciesCard[]>>
+  /** 1-12; the in-season theme uses this month's records. */
+  currentMonth: number
 }
+
+const NO_THEME_SPECIES: ThematicPools['speciesByTheme'] = {}
 
 const rotateThematicSpecies = (
   species: SpeciesCard[],
@@ -42,11 +46,50 @@ const rotateThematicSpecies = (
   return seededShuffle(viable, seedKey)
 }
 
-export const useThematicLensData = (
-  selectedPlace: Place | undefined,
+/** Seeded rotation and order of the theme cards. Pure: same pools + seed, same result. */
+export const selectThematicStripCards = (
+  { speciesByTheme, currentMonth }: ThematicPools,
+  placeId: string,
   contentSeed: number,
+): ThematicStripCard[] => {
+  const monthLabel = new Date(2000, currentMonth - 1, 1).toLocaleString('en', {
+    month: 'long',
+  })
+  const all: ThematicStripCard[] = [
+    {
+      id: 'inSeason',
+      kicker: `🌸 In season · ${monthLabel}`,
+      species: rotateThematicSpecies(
+        speciesByTheme.inSeason ?? [],
+        `${placeId}:thematic-species:inSeason:${contentSeed}`,
+      ),
+    },
+    {
+      id: 'smallWonders',
+      kicker: '🐛 Small wonder',
+      species: rotateThematicSpecies(
+        speciesByTheme.smallWonders ?? [],
+        `${placeId}:thematic-species:smallWonders:${contentSeed}`,
+      ),
+    },
+    {
+      id: 'nightCreatures',
+      kicker: '🌃 Night creature',
+      species: rotateThematicSpecies(
+        speciesByTheme.nightCreatures ?? [],
+        `${placeId}:thematic-species:nightCreatures:${contentSeed}`,
+      ),
+    },
+  ]
+  // Deterministic shuffle per place + seed; dedup picks the first two
+  // surviving themes downstream.
+  return seededShuffle(all, `${placeId}:thematic:${contentSeed}`)
+}
+
+export const useThematicPools = (
+  selectedPlace: Place | undefined,
   commonNameLanguage: string,
-): ThematicLensResult => {
+): ThematicPools & { isReady: boolean } => {
   const currentMonth = new Date().getMonth() + 1
 
   const resolveMergedStrip = async (
@@ -215,49 +258,6 @@ export const useThematicLensData = (
     staleTime: 1000 * 60 * 60,
   })
 
-  const thematicStripCards = useMemo<ThematicStripCard[]>(() => {
-    const monthLabel = new Date(2000, currentMonth - 1, 1).toLocaleString('en', {
-      month: 'long',
-    })
-    const all: ThematicStripCard[] = [
-      {
-        id: 'inSeason',
-        kicker: `🌸 In season · ${monthLabel}`,
-        species: rotateThematicSpecies(
-          thematicCardsQuery.data?.inSeason ?? [],
-          `${selectedPlace?.id ?? 'none'}:thematic-species:inSeason:${contentSeed}`,
-        ),
-      },
-      {
-        id: 'smallWonders',
-        kicker: '🐛 Small wonder',
-        species: rotateThematicSpecies(
-          thematicCardsQuery.data?.smallWonders ?? [],
-          `${selectedPlace?.id ?? 'none'}:thematic-species:smallWonders:${contentSeed}`,
-        ),
-      },
-      {
-        id: 'nightCreatures',
-        kicker: '🌃 Night creature',
-        species: rotateThematicSpecies(
-          thematicCardsQuery.data?.nightCreatures ?? [],
-          `${selectedPlace?.id ?? 'none'}:thematic-species:nightCreatures:${contentSeed}`,
-        ),
-      },
-    ]
-    // Deterministic shuffle per place + seed; dedup picks the first two
-    // surviving themes downstream.
-    return seededShuffle(
-      all,
-      `${selectedPlace?.id ?? 'none'}:thematic:${contentSeed}`,
-    )
-  }, [
-    currentMonth,
-    thematicCardsQuery.data,
-    selectedPlace?.id,
-    contentSeed,
-  ])
-
   const arePickQueriesReady = [
     inSeasonQuery,
     smallWondersQuery,
@@ -269,5 +269,9 @@ export const useThematicLensData = (
     (arePickQueriesReady &&
       (!hasThematicPicks || thematicCardsQuery.isSuccess || thematicCardsQuery.isError))
 
-  return { thematicStripCards, isReady }
+  const speciesByTheme = thematicCardsQuery.data ?? NO_THEME_SPECIES
+  return useMemo(
+    () => ({ speciesByTheme, currentMonth, isReady }),
+    [speciesByTheme, currentMonth, isReady],
+  )
 }

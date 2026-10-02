@@ -6,10 +6,6 @@ import type { ConservationSnapshot, Place, ThreatenedSpecies } from '../../types
 import { placeGeoParams, seededPick } from './shared'
 import { speciesCardBase } from './speciesCards'
 
-type ConservationLensResult = {
-  snapshot: ConservationSnapshot
-  isReady: boolean
-}
 
 const THREATENED_CATS = ['CR', 'EN', 'VU'] as const
 const ALL_CATS = ['LC', 'NT', 'VU', 'EN', 'CR', 'DD'] as const
@@ -27,11 +23,52 @@ type ThreatenedCandidate = {
 
 type ThreatenedPoolCandidate = Omit<ThreatenedCandidate, 'group' | 'species'>
 
-export const useConservationSnapshot = (
-  selectedPlace: Place | undefined,
+/** Seed-independent conservation data: red-list counts and threatened candidates. */
+export type ConservationPools = {
+  counts: Omit<ConservationSnapshot, 'threatenedSpecies'>
+  threatenedCandidates: ThreatenedCandidate[]
+}
+
+/** Seeded pick of one threatened species per group. Pure: same pools + seed, same result. */
+export const selectConservationSnapshot = (
+  { counts, threatenedCandidates }: ConservationPools,
+  placeId: string,
   contentSeed: number,
+): ConservationSnapshot => {
+  const groupedThreatened = new Map<string, ThreatenedCandidate[]>()
+  for (const candidate of threatenedCandidates) {
+    const bucket = groupedThreatened.get(candidate.group)
+    if (bucket) {
+      bucket.push(candidate)
+    } else {
+      groupedThreatened.set(candidate.group, [candidate])
+    }
+  }
+
+  const threatenedSpecies = Array.from(groupedThreatened.entries())
+    .map(([group, bucket]) => {
+      bucket.sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
+      const top = bucket.slice(0, THREATENED_PICK_FROM_TOP_PER_GROUP)
+      const picked = seededPick(top, `${placeId}:threatened:${group}:${contentSeed}`)
+      return {
+        ...speciesCardBase(picked.speciesKey, picked.species),
+        highlight: IUCN_LABELS[picked.winningCat] ?? picked.winningCat,
+        popularity: picked.count,
+        iucnCategory: picked.winningCat,
+        iucnLabel: IUCN_LABELS[picked.winningCat] ?? picked.winningCat,
+      } as ThreatenedSpecies
+    })
+    .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+
+  return { ...counts, threatenedSpecies }
+}
+
+const NO_THREATENED_CANDIDATES: ThreatenedCandidate[] = []
+
+export const useConservationPools = (
+  selectedPlace: Place | undefined,
   commonNameLanguage: string,
-): ConservationLensResult => {
+): ConservationPools & { isReady: boolean } => {
   const speciesCountsQuery = useQuery({
     queryKey: ['iucnSpeciesCounts', selectedPlace?.id],
     queryFn: async ({ signal }) => {
@@ -140,38 +177,10 @@ export const useConservationSnapshot = (
     staleTime: 1000 * 60 * 60,
   })
 
-  const snapshot = useMemo<ConservationSnapshot>(() => {
-    const groupedThreatened = new Map<string, ThreatenedCandidate[]>()
-    for (const candidate of threatenedSpeciesQuery.data ?? []) {
-      const bucket = groupedThreatened.get(candidate.group)
-      if (bucket) {
-        bucket.push(candidate)
-      } else {
-        groupedThreatened.set(candidate.group, [candidate])
-      }
-    }
-
-    const threatenedSpecies = Array.from(groupedThreatened.entries())
-      .map(([group, bucket]) => {
-        bucket.sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
-        const top = bucket.slice(0, THREATENED_PICK_FROM_TOP_PER_GROUP)
-        const picked = seededPick(
-          top,
-          `${selectedPlace?.id ?? 'none'}:threatened:${group}:${contentSeed}`,
-        )
-        return {
-          ...speciesCardBase(picked.speciesKey, picked.species),
-          highlight: IUCN_LABELS[picked.winningCat] ?? picked.winningCat,
-          popularity: picked.count,
-          iucnCategory: picked.winningCat,
-          iucnLabel: IUCN_LABELS[picked.winningCat] ?? picked.winningCat,
-        } as ThreatenedSpecies
-      })
-      .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
-
-    // The counts only fill the red-list numbers on the sightings card, and
-    // arrive after the poster is shown. Species cards never depend on them,
-    // so a slow or failed count cannot change which species appear.
+  // The counts only fill the red-list numbers on the sightings card, and
+  // arrive after the poster is shown. Species cards never depend on them,
+  // so a slow or failed count cannot change which species appear.
+  const counts = useMemo<ConservationPools['counts']>(() => {
     if (!speciesCountsQuery.data?.length) {
       return {
         countsStatus: speciesCountsQuery.isError ? 'error' : 'pending',
@@ -179,7 +188,6 @@ export const useConservationSnapshot = (
         threatenedCount: 0,
         threatenedPercent: 0,
         categoryBreakdown: [],
-        threatenedSpecies,
       }
     }
 
@@ -210,15 +218,8 @@ export const useConservationSnapshot = (
       threatenedCount,
       threatenedPercent,
       categoryBreakdown,
-      threatenedSpecies,
     }
-  }, [
-    speciesCountsQuery.data,
-    speciesCountsQuery.isError,
-    threatenedSpeciesQuery.data,
-    selectedPlace?.id,
-    contentSeed,
-  ])
+  }, [speciesCountsQuery.data, speciesCountsQuery.isError])
 
   // Red-list counts are deliberately not part of readiness (see above).
   const isReady =
@@ -228,5 +229,9 @@ export const useConservationSnapshot = (
         threatenedSpeciesQuery.isSuccess ||
         threatenedSpeciesQuery.isError))
 
-  return { snapshot, isReady }
+  const threatenedCandidates = threatenedSpeciesQuery.data ?? NO_THREATENED_CANDIDATES
+  return useMemo(
+    () => ({ counts, threatenedCandidates, isReady }),
+    [counts, threatenedCandidates, isReady],
+  )
 }

@@ -16,8 +16,9 @@
  *   - Priority / max-instance caps per card type for tight layouts.
  */
 import type { ReactNode } from 'react'
-import type { useLensData } from '../hooks/useLensData'
+import type { LensData } from '../hooks/useLensData'
 import type { Anchor } from '../lib/gridPacker'
+import { POSTER_GRID_AREA } from '../lib/posterGrid'
 import Globe from '../components/Globe'
 import type { UiLanguage, UiText } from '../i18n/uiText'
 import { seededShuffle } from '../hooks/lensData/shared'
@@ -73,11 +74,6 @@ export type Tile = {
   speciesIds?: string[]
 }
 
-type LensData = ReturnType<typeof useLensData>
-
-/** Fixed poster dimensions. Size selection is intentionally removed. */
-export const POSTER_GRID_W = 6
-export const POSTER_GRID_H = 4
 
 const isAlicantePlace = (
   placeName: string,
@@ -88,7 +84,6 @@ const isAlicantePlace = (
   if (typeof latitude !== 'number' || typeof longitude !== 'number') return false
   return Math.abs(latitude - 38.3436365) < 0.35 && Math.abs(longitude - -0.4881708) < 0.35
 }
-export const POSTER_GRID_AREA = POSTER_GRID_W * POSTER_GRID_H
 
 /** What `buildBentoTiles` hands to each card. Lean on purpose. */
 export type CardBuildCtx = {
