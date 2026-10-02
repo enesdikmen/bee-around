@@ -138,7 +138,7 @@ export async function searchCities(
     signal,
     headers: { 'Accept-Language': language },
   })
-  if (!res.ok) throw new Error(`Nominatim ${res.status}`)
+  if (!res.ok) throw new Error(`Nominatim request failed (${res.status})`)
   const data = (await res.json()) as NominatimSearchResult[]
 
   return dedupeWithAdministrativePreference(data).slice(0, limit).map(toPlace)

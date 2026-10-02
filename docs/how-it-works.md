@@ -397,3 +397,13 @@ The notebook writes a full working output, but the app ships a slim runtime file
 ## Export And Print
 
 The PDF button opens the browser print dialog. From there, choose Save as PDF or print normally. The poster is sized as a fixed grid, so exported versions keep the same card arrangement. Species photos are raster images; text, icons, QR code, and most layout graphics remain browser-rendered.
+
+## Usage Monitoring
+
+The site uses [GoatCounter](https://www.goatcounter.com/), which is cookieless and stores no personal data. Besides page views, `src/lib/analytics.ts` sends a few anonymous events, each at most once per page load:
+
+- `error/<name>: <message>`: a crash caught by the error boundary, an uncaught error, or an unhandled promise rejection. Opaque cross-origin "Script error." reports and cancelled requests are ignored.
+- `fail/<query>/<status>`: a request that still failed after its retries, grouped by query name and HTTP status (or `network`), for example `fail/topSpeciesPool/429`.
+- `perf/first-poster/<bucket>`: how long the first poster took to appear, from the start of the page load, in the buckets `0-2s`, `2-4s`, `4-8s`, `8-15s`, and `15s+`.
+
+GoatCounter is absent in local development and when a visitor blocks it; the app works the same either way.

@@ -27,6 +27,7 @@ import {
 import type { LockEntry, LockListState } from '../lib/shareToken'
 import type { Place } from '../types/lens'
 import { ALL_IMAGE_SOURCES } from '../api/speciesImage'
+import { countFirstPosterTime } from '../lib/analytics'
 import {
   buildBentoTiles,
   buildSpeciesBackupTiles,
@@ -47,6 +48,9 @@ type PosterThemeId =
   | 'acidgarden'
 
 const DEFAULT_LOCK_SLOT_IDS = new Set(['title', 'sources'])
+// Only the first poster of a page load is timed: it is what someone opening
+// a shared link waits for, measured from the start of the page load.
+let firstPosterTimed = false
 // Locked slots whose content stays live; only their position is frozen.
 // Both show place-level data that no seed changes. The sightings card's
 // red-list numbers arrive after the poster is shown, so a frozen copy could
@@ -242,6 +246,12 @@ function BentoPoster({
   const isLoadingSnapshot =
     !displayData || committedSnapshot?.key !== snapshotKey || pendingLocks !== null
   const isToolbarDisabled = isLoadingSnapshot
+
+  useEffect(() => {
+    if (isLoadingSnapshot || firstPosterTimed) return
+    firstPosterTimed = true
+    countFirstPosterTime(performance.now() / 1000)
+  }, [isLoadingSnapshot])
 
   useEffect(() => {
     if (!isToolbarDisabled) return
