@@ -42,6 +42,14 @@ test('uncaught errors are counted, cancelled requests are not', async (t) => {
   assert.deepEqual(counted, ['error/TypeError: x is undefined', 'error/Error: boom'])
 })
 
+test('a poster without species is counted once', async (t) => {
+  const { counted } = fakeWindow(t)
+  const { countPosterWithoutSpecies } = await freshAnalytics()
+  countPosterWithoutSpecies()
+  countPosterWithoutSpecies()
+  assert.deepEqual(counted, ['data/no-species'])
+})
+
 test('first poster time is reported in buckets', async (t) => {
   const { counted } = fakeWindow(t)
   const { countFirstPosterTime } = await freshAnalytics()

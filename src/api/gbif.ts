@@ -1,4 +1,10 @@
 const GBIF_BASE_URL = 'https://api.gbif.org/v1'
+// GBIF is moving to the Catalogue of Life (COL XR) taxonomy, whose taxon keys
+// differ from the integer GBIF Backbone keys used throughout the app (taxon
+// filters, global_baseline.json, the comparison precompute). Occurrence
+// search still defaults to the Backbone; naming it explicitly keeps our keys
+// working if that default changes. Under COL XR they match nothing.
+const GBIF_BACKBONE_CHECKLIST_KEY = 'd7dddbf4-2cf0-4f39-9b2a-bb099caae36c'
 const GBIF_MAX_CONCURRENT_REQUESTS = 6
 const GBIF_MAX_429_RETRIES = 3
 // A 5xx or dropped connection is usually a one-off blip, so retry it once.
@@ -484,6 +490,7 @@ export const fetchOccurrenceFacets = async ({
 			Object.entries(facetLimits ?? {}).map(([field, limit]) => [`${field}.facetLimit`, limit]),
 		),
 		facetOffset,
+		checklistKey: GBIF_BACKBONE_CHECKLIST_KEY,
 	})
 
 	const now = Date.now()

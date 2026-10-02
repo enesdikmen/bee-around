@@ -48,6 +48,8 @@ GET /occurrence/search?limit=0&facet=...
 
 `limit=0` keeps payloads small while still returning the total `count` and facet counts. The app does not download all matching records for the poster.
 
+Every occurrence search names the GBIF Backbone taxonomy explicitly (`checklistKey=d7dddbf4-2cf0-4f39-9b2a-bb099caae36c`). GBIF is moving to the Catalogue of Life (COL XR) taxonomy, whose taxon keys differ from the Backbone keys this app uses for its taxon filters and precomputed data; occurrence search still defaults to the Backbone, and naming it keeps the app working if that default changes. A full move to COL XR keys is only needed if GBIF retires the Backbone.
+
 The GBIF client allows up to 6 concurrent requests overall, including at most 3 occurrence searches. Occurrence searches initially start 100 ms apart. Species and dataset metadata can use spare capacity immediately, without waiting behind the search timer. This avoids search bursts while keeping metadata fast. This pace is a starting point, not a guaranteed GBIF allowance: GBIF changes its limits with server load. The queue is first-in, first-out, except that the six IUCN species-count searches are low priority. The poster does not wait for them, so they start after other queued searches, one at a time. The pace itself does not change. A poster needs about 21 distinct occurrence searches (a few more when a fallback filter or severity cascade is used).
 
 A `429` pauses all new GBIF requests in that browser tab, including retries. The queue honors `Retry-After` (seconds or an HTTP date), or uses exponential backoff when that header is unavailable, with a small random delay to spread retries. Each rate-limit wave also doubles the spacing for the affected request type (search or metadata), up to 1 second. After the cooldown, every 6 successful responses shorten the spacing by 20% until it returns to the starting pace. Each request still has at most 3 retries for `429`. A server error (`5xx`) or dropped connection is retried once after 1 second; other errors are not retried. Other tabs and devices have independent queues, so this cannot eliminate every rate limit.
@@ -413,6 +415,7 @@ The site uses [GoatCounter](https://www.goatcounter.com/), which is cookieless a
 
 - `error/<name>: <message>`: a crash caught by the error boundary, an uncaught error, or an unhandled promise rejection. Opaque cross-origin "Script error." reports and cancelled requests are ignored.
 - `fail/<query>/<status>`: a request that still failed after its retries, grouped by query name and HTTP status (or `network`), for example `fail/topSpeciesPool/429`.
+- `data/no-species`: a poster that shows no species at all. GBIF answering without data (for example after a taxonomy change) is not an error, so the `fail/` events would miss it.
 - `perf/first-poster/<bucket>`: how long the first poster took to appear, from the start of the page load, in the buckets `0-2s`, `2-4s`, `4-8s`, `8-15s`, and `15s+`.
 
 GoatCounter is absent in local development and when a visitor blocks it; the app works the same either way.

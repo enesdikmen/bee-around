@@ -34,7 +34,7 @@ import {
 } from '../lib/posterLayout'
 import type { Place } from '../types/lens'
 import { ALL_IMAGE_SOURCES } from '../api/speciesImage'
-import { countFirstPosterTime } from '../lib/analytics'
+import { countFirstPosterTime, countPosterWithoutSpecies } from '../lib/analytics'
 import {
   buildBentoTiles,
   buildSpeciesBackupTiles,
@@ -264,6 +264,11 @@ function BentoPoster({
     firstPosterTimed = true
     countFirstPosterTime(performance.now() / 1000)
   }, [isLoadingSnapshot])
+
+  const hasSpecies = view ? view.cards.some((c) => c.speciesIds?.length) : null
+  useEffect(() => {
+    if (hasSpecies === false) countPosterWithoutSpecies()
+  }, [hasSpecies])
 
   useEffect(() => {
     if (!isLanguageMenuOpen && !isThemeMenuOpen) return

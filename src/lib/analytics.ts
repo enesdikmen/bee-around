@@ -56,6 +56,15 @@ export function countFailedQuery(queryName: string, error: Error) {
   countEvent(`fail/${queryName}/${status}`, 'Request failed')
 }
 
+/**
+ * Counts a poster that shows no species at all. GBIF answering successfully
+ * but without data (for example after a taxonomy change) is not an error,
+ * so failed-request events would not catch it.
+ */
+export function countPosterWithoutSpecies() {
+  countEvent('data/no-species', 'Poster without species')
+}
+
 /** Counts how long a visitor waited for their first poster, in buckets. */
 export function countFirstPosterTime(seconds: number) {
   const bucket =

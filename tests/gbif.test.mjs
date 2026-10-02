@@ -43,7 +43,7 @@ test('shared occurrence requests keep exact query, payload order and cached resu
   assert.deepEqual(await api.fetchOccurrenceFacets(facetRequest), facetData)
   assert.equal(calls.length, 2)
   assert.equal(calls[0], calls[1])
-  assert.equal(calls[0], 'https://api.gbif.org/v1/occurrence/search?limit=0&decimalLatitude=48.0616%2C48.2481&decimalLongitude=11.3608%2C11.7229&classKey=359&facet=speciesKey&facetLimit=3')
+  assert.equal(calls[0], 'https://api.gbif.org/v1/occurrence/search?limit=0&decimalLatitude=48.0616%2C48.2481&decimalLongitude=11.3608%2C11.7229&classKey=359&facet=speciesKey&facetLimit=3&checklistKey=d7dddbf4-2cf0-4f39-9b2a-bb099caae36c')
 })
 
 test('per-facet limits are sent as <field>.facetLimit and identical requests share one call', async (t) => {
