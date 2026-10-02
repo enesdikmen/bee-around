@@ -282,11 +282,11 @@ Scientific names remain visible because common names may be missing, duplicated,
 
 Images are best-effort. For every species without an existing image, the app tries active image sources in priority order:
 
-1. iNaturalist: `/v1/taxa?per_page=10&rank=species&q={canonicalName}`. The result must exactly match the scientific name to avoid fuzzy mismatches. Uses `default_photo.medium_url` and `square_url` where available.
+1. iNaturalist: `/v1/taxa?per_page=10&rank=species&q={canonicalName}`. The result must exactly match the scientific name, or else its `matched_term` must (this finds species iNaturalist lists under a newer name, e.g. GBIF's *Aquila pomarina* is iNaturalist's *Clanga pomarina*), to avoid fuzzy mismatches. Uses `default_photo.medium_url` and `square_url` where available.
 2. Wikidata/Wikimedia: SPARQL query for `P846` equal to the GBIF taxon key, then Wikidata entity `P18`, then Commons image metadata and thumbnails.
 3. GBIF: `/species/{key}/media?limit=1`, using the first item with `identifier` or `references`.
 
-Image fetches time out after 8 seconds per source. Successful image results are cached for the session. Null results are not permanently cached, so background retries can recover from transient rate limits or network failures. The UI does not filter species by image availability because doing so would make identical share links choose different species depending on image-fetch luck.
+Image fetches time out after 8 seconds per source. Answers are cached for the session per species and source: a photo, and also a definite "no photo", so species without one are not looked up again on every pass. Failed lookups (network error, timeout, rate limit, server error) are not cached, so background retries can recover from them. The UI does not filter species by image availability because doing so would make identical share links choose different species depending on image-fetch luck.
 
 ## Deduplication Rules
 
@@ -328,7 +328,7 @@ The poster is a pure function of this state and the place's data (`src/lib/poste
 3. Backup cards, then invisible fillers, fill any gap, so the poster always has 24 cells.
 4. Packing honours every fixed position that fits. On a different column count, positions keep their offset from the nearest corner (sources stays bottom-right); a position that collides is placed freely instead. If fresh cards cannot fit around fixed ones, the largest is swapped for fillers, so the layout never fails.
 
-Data is fetched once per place (`useLensPools`); the picks for any seed come from `selectLensData(pools, seed)`, which is pure. Images are resolved for the current seed and every fixed card's seed together. A new poster is shown only when all of its data and images are ready, so Regenerate and language changes swap the whole poster at once instead of updating card by card.
+Data is fetched once per place (`useLensPools`); the picks for any seed come from `selectLensData(pools, seed)`, which is pure. Images are resolved for the current seed and every fixed card's seed together. A new poster is shown only when all of its data is ready, so Regenerate and language changes swap the whole poster at once instead of updating card by card. The first poster of a place also waits for its photos, so a shared link opens complete; after that, photos not looked up yet fade in when they arrive.
 
 ## Share URLs
 

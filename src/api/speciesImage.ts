@@ -26,18 +26,29 @@ export interface SpeciesImage {
   sourceUrl?: string
 }
 
-/** Fetch JSON, swallowing network/parse errors as null so callers can fall through. */
-const safeJson = async <T>(
+/** A lookup that failed (network error, timeout, rate limit, server error)
+ *  rather than answering "no photo". Failed lookups are retried later. */
+class LookupFailed extends Error {}
+
+/** Fetch JSON. A definite "not there" (404 or another client error) returns
+ *  null; anything that may succeed on a later try throws LookupFailed. */
+const fetchJson = async <T>(
   url: string,
   signal?: AbortSignal,
   init?: RequestInit,
 ): Promise<T | null> => {
+  let res: Response
   try {
-    const res = await fetch(url, { ...init, signal })
-    if (!res.ok) return null
+    res = await fetch(url, { ...init, signal })
+  } catch {
+    throw new LookupFailed(url)
+  }
+  if (res.status === 429 || res.status >= 500) throw new LookupFailed(url)
+  if (!res.ok) return null
+  try {
     return (await res.json()) as T
   } catch {
-    return null
+    throw new LookupFailed(url)
   }
 }
 
@@ -144,7 +155,7 @@ const tryWikidata = async (
   signal?: AbortSignal,
 ): Promise<SpeciesImage | null> => {
   const sparqlQuery = `SELECT ?item WHERE { ?item wdt:P846 "${speciesKey}" . } LIMIT 1`
-  const sparql = await safeJson<SparqlResponse>(
+  const sparql = await fetchJson<SparqlResponse>(
     `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(sparqlQuery)}`,
     signal,
     { headers: { Accept: 'application/sparql-results+json' } },
@@ -152,7 +163,7 @@ const tryWikidata = async (
   const qid = sparql?.results?.bindings?.[0]?.item?.value?.split('/').pop()
   if (!qid) return null
 
-  const entity = await safeJson<EntityResponse>(
+  const entity = await fetchJson<EntityResponse>(
     `https://www.wikidata.org/wiki/Special:EntityData/${qid}.json`,
     signal,
   )
@@ -160,7 +171,7 @@ const tryWikidata = async (
     entity?.entities?.[qid]?.claims?.P18?.[0]?.mainsnak?.datavalue?.value
   if (!fileName) return null
 
-  const commons = await safeJson<CommonsResponse>(
+  const commons = await fetchJson<CommonsResponse>(
     `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(`File:${fileName}`)}&prop=imageinfo&iiprop=url|extmetadata&format=json&origin=*`,
     signal,
   )
@@ -185,6 +196,8 @@ const tryWikidata = async (
 interface InatTaxaResponse {
   results: Array<{
     name: string
+    /** The name the query matched, e.g. an older synonym of `name`. */
+    matched_term?: string
     default_photo?: {
       id?: number
       medium_url?: string
@@ -202,14 +215,18 @@ const tryInat = async (
 ): Promise<SpeciesImage | null> => {
   if (!scientificName) return null
   // iNat's `q` is fuzzy and matches common names, so "Lynx lynx" can return
-  // "Lynx rufus" (Bobcat). Fetch a handful and require an exact name match.
-  const data = await safeJson<InatTaxaResponse>(
+  // "Lynx rufus" (Bobcat). Fetch a handful and require an exact match: on the
+  // name, or else on the matched term, which covers renamed species (GBIF's
+  // "Aquila pomarina" is iNaturalist's "Clanga pomarina").
+  const data = await fetchJson<InatTaxaResponse>(
     `https://api.inaturalist.org/v1/taxa?per_page=10&rank=species&q=${encodeURIComponent(scientificName)}`,
     signal,
   )
   const target = scientificName.trim().toLowerCase()
-  const photo = data?.results?.find(
-    (r) => r.name?.trim().toLowerCase() === target,
+  const exactly = (value?: string) => value?.trim().toLowerCase() === target
+  const photo = (
+    data?.results?.find((r) => exactly(r.name)) ??
+    data?.results?.find((r) => exactly(r.matched_term))
   )?.default_photo
   // Prefer medium-size assets for rectangular cards and keep the square
   // version for small cropped tiles so PDF exports never embed originals.
@@ -233,22 +250,26 @@ const tryGbif = async (
   speciesKey: number,
   signal?: AbortSignal,
 ): Promise<SpeciesImage | null> => {
+  let media: Awaited<ReturnType<typeof fetchSpeciesMedia>>
   try {
-    const media = await fetchSpeciesMedia({ speciesKey, limit: 1, signal })
-    const item = media.results.find((m) => m.identifier || m.references)
-    const rawUrl = item?.identifier || item?.references
-    if (!rawUrl) return null
-    const image = normalizeGbifMediaUrl(rawUrl)
-    if (!image) return null
-    return {
-      ...image,
-      source: 'gbif',
-      author: item?.creator || item?.rightsHolder,
-      license: item?.license,
-      sourceUrl: item?.references || rawUrl,
-    }
-  } catch {
-    return null
+    media = await fetchSpeciesMedia({ speciesKey, limit: 1, signal })
+  } catch (error) {
+    // The GBIF client already retried; a client error (e.g. 404) is final.
+    const status = Number(/\((\d{3})\)/.exec((error as Error).message)?.[1])
+    if (status >= 400 && status < 500 && status !== 429) return null
+    throw new LookupFailed(String(speciesKey))
+  }
+  const item = media.results.find((m) => m.identifier || m.references)
+  const rawUrl = item?.identifier || item?.references
+  if (!rawUrl) return null
+  const image = normalizeGbifMediaUrl(rawUrl)
+  if (!image) return null
+  return {
+    ...image,
+    source: 'gbif',
+    author: item?.creator || item?.rightsHolder,
+    license: item?.license,
+    sourceUrl: item?.references || rawUrl,
   }
 }
 
@@ -256,13 +277,12 @@ const tryGbif = async (
 //
 // Design: cache one Promise per (speciesKey, source) pair.
 // • The promise itself dedupes concurrent callers.
-// • Successful hits (non-null) are cached forever and reused instantly
-//   when sources are toggled or reordered.
-// • `null` outcomes are evicted after resolution so a transient network
-//   failure (rate limit, offline blip) doesn't permanently poison a
-//   species' image — the next call retries from scratch. This is what
-//   lets locked cards on a freshly opened share URL recover their image
-//   instead of showing the placeholder forever.
+// • Answers are cached for the session: a photo, and also a definite "no
+//   photo", so species without one are not looked up again on every pass
+//   (on species-poor places that was dozens of requests per Regenerate).
+// • Failed lookups (network error, timeout, rate limit, server error) are
+//   evicted so the next pass retries them. This is what lets locked cards
+//   on a freshly opened share URL recover their image after a blip.
 // • We deliberately do NOT accept an external AbortSignal. React Query
 //   cancels the parent query on every key change (e.g. toggling a source);
 //   if we propagated that, in-flight fetches would be aborted mid-walk and
@@ -299,13 +319,15 @@ const fetchOne = (
 
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS)
+  let failed = false
   const promise = FETCHERS[source]({ speciesKey, scientificName, signal: ctl.signal })
-    .catch(() => null)
+    .catch(() => {
+      failed = true
+      return null
+    })
     .finally(() => clearTimeout(timer))
     .then((result) => {
-      // Don't poison the cache with transient nulls — evict so the next
-      // caller can retry. Successful hits stay cached for the session.
-      if (!result?.url) {
+      if (failed) {
         const map = cache.get(speciesKey)
         if (map?.get(source) === promise) {
           map.delete(source)

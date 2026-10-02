@@ -786,6 +786,19 @@
   text-underline-offset: 0.16em;
 }
 
+/* A photo that arrives after its card is shown replaces the placeholder
+   with a new <img>, which fades in instead of popping. */
+@media (prefers-reduced-motion: no-preference) {
+  img.bento-hero__img,
+  img.bento-mini__img {
+    animation: bento-photo-in 220ms ease-out;
+  }
+}
+@keyframes bento-photo-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Missing-image placeholder used when no source resolves. */
 .bento-img-placeholder {
   display: block;

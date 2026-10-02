@@ -156,7 +156,13 @@ function BentoPoster({
   )
   const posterData = useMemo(() => posters.map((p) => p.data), [posters])
   const { applyImages, isReady: imagesReady } = useSpeciesImages(posterData, effectiveSources)
-  const isComplete = pools.isReady && imagesReady && posters.length > 0
+  // The last complete poster, kept on screen while the next one loads.
+  const [lastView, setLastView] = useState<PosterView | null>(null)
+  // The first poster of a place waits for its photos, so a shared link opens
+  // complete. Later posters (Regenerate, language) show at once: their
+  // species are final, and photos not looked up yet fade in when they arrive.
+  const hasShownPlace = lastView?.placeId === selectedPlace.id
+  const isComplete = pools.isReady && posters.length > 0 && (imagesReady || hasShownPlace)
 
   // The address bar and the sources QR code both come from the state.
   const shareUrl = useMemo(() => {
@@ -240,8 +246,6 @@ function BentoPoster({
     }
   }, [assembled, currentLayout, selectedPlace.id])
 
-  // Keep showing the last complete poster while the next one loads.
-  const [lastView, setLastView] = useState<PosterView | null>(null)
   if (view && view !== lastView) setLastView(view)
   const shownView = view ?? lastView
   // The loader covers the first poster of a place; Regenerate and language
