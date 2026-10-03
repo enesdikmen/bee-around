@@ -491,8 +491,9 @@ img[src=""] { visibility: hidden; }
   /* The poster scrolls vertically here. The toolbar sits in the page flow,
      so the poster starts right below however many rows it wraps to (which
      depends on the interface language), and sticks to the top as you
-     scroll. */
-  .bento-toolbar {
+     scroll. Scoped to the poster: the About page reuses the toolbar class
+     and keeps it fixed. */
+  .bento-shell > .bento-toolbar {
     position: sticky;
     inset: auto;
     top: 0.7rem;
