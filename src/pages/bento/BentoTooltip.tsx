@@ -1,8 +1,10 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -31,6 +33,11 @@ function BentoTooltip({
   const triggerRef = useRef<HTMLSpanElement | null>(null)
   const panelRef = useRef<HTMLSpanElement | null>(null)
   const closeTimerRef = useRef<number | null>(null)
+  /** Pointer type of the press in progress. A tap is followed by emulated
+   *  hover and focus, which must not open the panel before the tap toggles it. */
+  const pressTypeRef = useRef<string | null>(null)
+  /** Opened by a tap: it stays open until the next tap, not until blur. */
+  const [isPinned, setIsPinned] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [portalRoot, setPortalRoot] = useState<Element | null>(null)
   const [position, setPosition] = useState<TooltipPosition | null>(null)
@@ -42,6 +49,7 @@ function BentoTooltip({
   }
 
   const scheduleClose = () => {
+    if (isPinned) return
     clearCloseTimer()
     closeTimerRef.current = window.setTimeout(() => {
       setIsOpen(false)
@@ -89,9 +97,26 @@ function BentoTooltip({
   useLayoutEffect(() => {
     if (!disabled) return
     clearCloseTimer()
-    const closeId = window.setTimeout(() => setIsOpen(false), 0)
+    const closeId = window.setTimeout(() => {
+      setIsOpen(false)
+      setIsPinned(false)
+    }, 0)
     return () => window.clearTimeout(closeId)
   }, [disabled])
+
+  // A tapped-open panel closes on a tap anywhere else, including the start of
+  // a scroll.
+  useEffect(() => {
+    if (!isPinned) return
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target as Node
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setIsOpen(false)
+      setIsPinned(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress, true)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress, true)
+  }, [isPinned])
 
   const openTooltip = () => {
     if (disabled) return
@@ -101,6 +126,32 @@ function BentoTooltip({
         (typeof document !== 'undefined' ? document.body : null),
     )
     setIsOpen(true)
+  }
+
+  const onHoverStart = (event: ReactPointerEvent) => {
+    if (event.pointerType === 'mouse') openTooltip()
+  }
+
+  const onHoverEnd = (event: ReactPointerEvent) => {
+    if (event.pointerType === 'mouse') scheduleClose()
+  }
+
+  const onFocus = () => {
+    if (pressTypeRef.current && pressTypeRef.current !== 'mouse') return
+    openTooltip()
+  }
+
+  const onTap = () => {
+    const pressType = pressTypeRef.current
+    pressTypeRef.current = null
+    if (!pressType || pressType === 'mouse' || disabled) return
+    if (isPinned) {
+      setIsOpen(false)
+      setIsPinned(false)
+      return
+    }
+    openTooltip()
+    setIsPinned(true)
   }
 
   const tooltip =
@@ -116,8 +167,8 @@ function BentoTooltip({
             top: position?.top ?? -9999,
             visibility: position ? 'visible' : 'hidden',
           }}
-          onMouseEnter={openTooltip}
-          onMouseLeave={scheduleClose}
+          onPointerEnter={onHoverStart}
+          onPointerLeave={onHoverEnd}
         >
           {panel}
         </span>,
@@ -133,10 +184,13 @@ function BentoTooltip({
         tabIndex={disabled ? -1 : 0}
         aria-label={ariaLabel}
         aria-disabled={disabled || undefined}
-        onMouseEnter={openTooltip}
-        onMouseLeave={scheduleClose}
-        onFocus={openTooltip}
+        onPointerDown={(event) => { pressTypeRef.current = event.pointerType }}
+        onPointerCancel={() => { pressTypeRef.current = null }}
+        onPointerEnter={onHoverStart}
+        onPointerLeave={onHoverEnd}
+        onFocus={onFocus}
         onBlur={scheduleClose}
+        onClick={onTap}
       />
       {tooltip}
     </>

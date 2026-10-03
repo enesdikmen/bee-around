@@ -667,6 +667,37 @@
   max-width: 18rem;
 }
 
+/* Touch screens: nothing hovers, so a small "i" shows that the card opens
+   details on tap, and the panel links get a taller tap area. */
+@media (hover: none) {
+  .bento-species-info::after {
+    content: "i";
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid rgb(var(--color-ink) / 0.45);
+    border-radius: 999px;
+    background: rgb(var(--color-surface) / 0.78);
+    color: rgb(var(--color-ink));
+    font-family: Georgia, serif;
+    font-size: 0.8rem;
+    font-style: italic;
+    font-weight: 700;
+    line-height: 1;
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  .bento-species-info__taxon-link,
+  .bento-species-info__photo a {
+    padding-block: 0.4rem;
+  }
+}
+
 .bento-tooltip-portal.bento-species-info__panel {
   position: fixed;
   top: auto;
