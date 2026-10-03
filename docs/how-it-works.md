@@ -112,7 +112,7 @@ The same card includes IUCN record buckets when available:
 
 Counts here are species-facet counts by IUCN category from the conservation query, not local population estimates. These counts load after the rest of the poster is shown: the numbers read `…` until they arrive, and the section is hidden if they fail. No species card depends on them. A locked sightings card keeps its content live (like the sources card), so it never freezes the placeholder.
 
-The comparison bars come from `comparison_precompute.json`, not from live browser computation. The selected place is matched to the nearest precomputed city within 75 km; if no city matches, the app uses the first precomputed country row whose bounding box contains the point. The card currently displays:
+The comparison bars come from `comparison_precompute.json`, not from live browser computation. The selected place is matched to the nearest precomputed city within 75 km; if no city matches, the app uses the row for the place's country (by ISO code), and only without a country code the first country row whose bounding box contains the point. Bounding boxes alone are unreliable: France's spans its overseas territories. When a country row is used, the card is titled with the country's name ("How Mali compares"), so a city never presents its country's figures as its own. The card currently displays:
 
 - recording intensity percentile: records per square kilometer;
 - threatened-share percentile: threatened IUCN record share.

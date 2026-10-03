@@ -48,6 +48,8 @@ export type UiText = {
     watchList: string
     atRisk: string
     comparisonTitle: string
+    /** Title when the figures are the surrounding country's, not the place's. */
+    countryComparisonTitle: (country: string) => string
     cities: string
     countries: string
     comparedWith: (count: string, cohort: string) => string
@@ -149,6 +151,7 @@ const englishText: UiText = {
     watchList: 'Watch list',
     atRisk: 'At risk',
     comparisonTitle: 'How this place compares',
+    countryComparisonTitle: (country) => `How ${country} compares`,
     cities: 'cities',
     countries: 'countries',
     comparedWith: (count, cohort) => `vs ${count} ${cohort}`,
@@ -250,6 +253,7 @@ const frenchText: UiText = {
     watchList: 'A surveiller',
     atRisk: 'Menacé',
     comparisonTitle: 'Comparaison de ce lieu',
+    countryComparisonTitle: (country) => `Comparaison : ${country}`,
     cities: 'villes',
     countries: 'pays',
     comparedWith: (count, cohort) => `vs ${count} ${cohort}`,
@@ -351,6 +355,7 @@ const spanishText: UiText = {
     watchList: 'En seguimiento',
     atRisk: 'En riesgo',
     comparisonTitle: 'Comparación de este lugar',
+    countryComparisonTitle: (country) => `Comparación de ${country}`,
     cities: 'ciudades',
     countries: 'países',
     comparedWith: (count, cohort) => `frente a ${count} ${cohort}`,
@@ -452,6 +457,7 @@ const turkishText: UiText = {
     watchList: 'İzleme listesi',
     atRisk: 'Risk altında',
     comparisonTitle: 'Bu yerin karşılaştırması',
+    countryComparisonTitle: (country) => `${country} karşılaştırması`,
     cities: 'şehir',
     countries: 'ülke',
     comparedWith: (count, cohort) => `${count} ${cohort} ile karşılaştırma`,
@@ -553,6 +559,7 @@ const germanText: UiText = {
     watchList: 'Beobachtungsliste',
     atRisk: 'Gefährdet',
     comparisonTitle: 'Vergleich dieses Ortes',
+    countryComparisonTitle: (country) => `Vergleich: ${country}`,
     cities: 'Städte',
     countries: 'Länder',
     comparedWith: (count, cohort) => `vs ${count} ${cohort}`,
@@ -654,6 +661,7 @@ const italianText: UiText = {
     watchList: 'Da monitorare',
     atRisk: 'A rischio',
     comparisonTitle: 'Confronto di questo luogo',
+    countryComparisonTitle: (country) => `Confronto di ${country}`,
     cities: 'città',
     countries: 'paesi',
     comparedWith: (count, cohort) => `rispetto a ${count} ${cohort}`,
@@ -755,6 +763,7 @@ const portugueseText: UiText = {
     watchList: 'Lista de atenção',
     atRisk: 'Em risco',
     comparisonTitle: 'Comparação deste lugar',
+    countryComparisonTitle: (country) => `Comparação de ${country}`,
     cities: 'cidades',
     countries: 'países',
     comparedWith: (count, cohort) => `comparado com ${count} ${cohort}`,

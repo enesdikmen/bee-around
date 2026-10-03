@@ -114,6 +114,7 @@ function BentoPoster({
   const placeName = selectedPlace?.label?.split(',')[0]?.trim() ?? uiText.citySearch.pickCity
   const latitude = selectedPlace?.latitude
   const longitude = selectedPlace?.longitude
+  const countryCode = selectedPlace?.countryCode
 
   // Source priority is intentionally fixed in UI for a simpler experience.
   // To change fallback order later, edit `ALL_IMAGE_SOURCES` in
@@ -191,6 +192,7 @@ function BentoPoster({
               placeName,
               latitude,
               longitude,
+              countryCode,
               data,
               contentSeed: seed,
               shareUrl,
@@ -213,7 +215,7 @@ function BentoPoster({
       cols: GRID_W,
       key: `${state.seed}|${GRID_W}|${cards.map((c) => c.id).join(',')}`,
     }
-  }, [isComplete, posters, applyImages, state, GRID_W, shareUrl, placeName, latitude, longitude, commonNameLanguage, uiText])
+  }, [isComplete, posters, applyImages, state, GRID_W, shareUrl, placeName, latitude, longitude, countryCode, commonNameLanguage, uiText])
 
   // Packing is kept while the same cards sit in the same places, so locking,
   // unlocking or switching language never reshuffles the poster. It is

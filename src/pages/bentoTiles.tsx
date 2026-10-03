@@ -90,6 +90,8 @@ export type CardBuildCtx = {
   placeName: string
   latitude?: number
   longitude?: number
+  /** ISO-2 code of the place's country; picks its comparison row. */
+  countryCode?: string
   language: UiLanguage
   uiText: UiText
   /** Poster/content seed bumped by Regenerate; cards can key random picks to it. */
@@ -548,13 +550,18 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)))
 }
 
+const rowCountryCode = (row: ComparisonRow) => row.place.label.split(', ')[1]
+
 /** Resolve the currently selected place to a precomputed comparison row.
- *  Strategy: nearest city within 75 km (cohort=city), else country whose
- *  bbox contains the point (cohort=country). Returns `null` if neither
+ *  Strategy: nearest city within 75 km (cohort=city), else the place's
+ *  country by ISO code, else a country whose bbox contains the point
+ *  (cohort=country). Boxes alone are unreliable — France's spans its
+ *  overseas territories and contains Timbuktu. Returns `null` if nothing
  *  matches — the card will then opt out. */
 function findComparisonRow(
   latitude: number | undefined,
   longitude: number | undefined,
+  countryCode: string | undefined,
 ): ComparisonRow | null {
   if (typeof latitude !== 'number' || typeof longitude !== 'number') return null
   let bestCity: ComparisonRow | null = null
@@ -570,6 +577,10 @@ function findComparisonRow(
     }
   }
   if (bestCity) return bestCity
+  const byCode = countryCode
+    ? COMPARISON_ROWS.find((row) => row.kind === 'country' && rowCountryCode(row) === countryCode)
+    : undefined
+  if (byCode) return byCode
   for (const row of COMPARISON_ROWS) {
     if (row.kind !== 'country') continue
     const bb = row.place.bbox
@@ -584,6 +595,18 @@ function findComparisonRow(
     }
   }
   return null
+}
+
+/** Country name for a country row, in the interface language. Only 282
+ *  cities are precomputed, so most places show their country's figures; the
+ *  card names the country rather than calling them the place's. */
+function countryRowName(row: ComparisonRow, language: UiLanguage): string {
+  const [name, code] = row.place.label.split(', ')
+  try {
+    return (code && new Intl.DisplayNames([language], { type: 'region' }).of(code)) || name
+  } catch {
+    return name
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -630,7 +653,7 @@ export const CARD_DEFS: CardDef[] = [
     type: 'sightings',
     size: { w: 1, h: 2 },
     className: 'bento-card bento-card--sightings accent-ink',
-    build: ({ data, latitude, longitude, language, uiText }) => {
+    build: ({ data, latitude, longitude, countryCode, language, uiText }) => {
       // Show the headline number plus the top 3 kingdoms as compact %
       // chips so users see the *composition* of those sightings, not just
       // the raw count. Falls back gracefully if breakdown is empty.
@@ -679,8 +702,11 @@ export const CARD_DEFS: CardDef[] = [
       // NOTE: `uniqueSpecies` is available in the precomputed rows, but is
       // intentionally omitted from this compact card so the visible comparison
       // stays focused on recording intensity and conservation signal.
-      const cmpRow = findComparisonRow(latitude, longitude)
+      const cmpRow = findComparisonRow(latitude, longitude, countryCode)
       const pcts = cmpRow?.percentiles ?? null
+      const comparisonTitle = cmpRow?.kind === 'country'
+        ? uiText.poster.countryComparisonTitle(countryRowName(cmpRow, language))
+        : uiText.poster.comparisonTitle
       const cohortLabel = pcts?.cohort === 'city' ? uiText.poster.cities : uiText.poster.countries
       const cohortSize = pcts?.cohortSize
       const ranks = pcts
@@ -733,7 +759,7 @@ export const CARD_DEFS: CardDef[] = [
               {ranks.length > 0 && (
                 <div className="bento-sightings__ranks">
                   <p className="bento-sightings__ranks-head">
-                    {uiText.poster.comparisonTitle}
+                    {comparisonTitle}
                     {typeof cohortSize === 'number' && (
                       <span className="bento-sightings__ranks-sub">
                         {' '}· {uiText.poster.comparedWith(cohortSize.toLocaleString(language), cohortLabel)}
@@ -1207,6 +1233,8 @@ export interface BuildTilesArgs {
   latitude?: number
   /** Longitude of the selected place (degrees). Used by the title-tile globe. */
   longitude?: number
+  /** ISO-2 code of the place's country. */
+  countryCode?: string
   language: UiLanguage
   uiText: UiText
   data: LensData
