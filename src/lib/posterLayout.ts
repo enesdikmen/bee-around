@@ -6,7 +6,9 @@
  *    rebuilt from the seed they were captured at; live cards (sources,
  *    sightings) always show current content in their fixed place.
  * 2. Fresh cards for the current seed fill the remaining area in registry
- *    order, skipping slots and species that are already shown.
+ *    order, skipping slots and species that are already shown. On a phone
+ *    the wide cards take set rows when those cells are free (see
+ *    PHONE_ROWS).
  * 3. Backup cards fill any gap, then invisible fillers, so the poster always
  *    has exactly POSTER_GRID_AREA cells.
  * 4. Packing honours every fixed position it can and never fails: if the
@@ -22,6 +24,17 @@ import type { Tile } from '../pages/bentoTiles'
  *  Both show place-level data: the sources QR follows the current URL, and
  *  the sightings card's red-list numbers arrive after the poster is shown. */
 export const LIVE_SLOT_IDS = new Set(['sources', 'sightings'])
+
+/** At 2 columns every 2-wide card spans the screen, and random packing tends
+ *  to bunch them at the bottom, leaving a long run of same-size photos. These
+ *  rows spread them out instead: title, hero, the numbers, then seasonality
+ *  midway, with sources last. A row is only used while its cells are free,
+ *  so user locks always win. */
+const PHONE_ROWS: Record<string, { x: number; y: number }> = {
+  hero: { x: 0, y: 1 },
+  sightings: { x: 0, y: 3 },
+  seasonality: { x: 0, y: 7 },
+}
 
 /** The cards one seed's poster offers: the main set, then gap-filling backups
  *  in priority order. */
@@ -114,7 +127,9 @@ export function assemblePosterCards(
   for (const tile of [...current.main, ...current.backups]) {
     if (usedArea >= POSTER_GRID_AREA) break
     if (conflicts(tile) || usedArea + area(tile) > POSTER_GRID_AREA) continue
-    add({ ...tile, sourceSeed: state.seed })
+    const row = cols === 2 && tile.slotId ? PHONE_ROWS[tile.slotId] : undefined
+    const pinned = !!row && claimCells(row.x, row.y, tile.w, tile.h)
+    add({ ...tile, pinXY: pinned ? row : undefined, sourceSeed: state.seed })
   }
 
   let i = 0

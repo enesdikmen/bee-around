@@ -482,8 +482,19 @@ img[src=""] { visibility: hidden; }
 
 @media screen and (max-width: 720px) {
   .bento-shell {
-    padding: 6.25rem 0.9rem 1.5rem;
+    padding: 0.7rem 0.9rem 1.5rem;
     overflow-x: hidden;
+  }
+
+  /* The poster scrolls vertically here, so a fixed toolbar would float over
+     the cards. In the page flow it scrolls away with the brand mark, and the
+     poster starts right below however many rows it wraps to — which depends
+     on the interface language. */
+  .bento-toolbar {
+    position: relative;
+    inset: auto;
+    max-width: none;
+    margin-bottom: 1rem;
   }
 
   .bento-grid-wrap {
@@ -512,14 +523,6 @@ img[src=""] { visibility: hidden; }
 }
 
 @media (max-width: 520px) {
-  .bento-shell {
-    /* The toolbar is fixed, and how many rows it wraps to depends on the
-       interface language — "Regenerate" is much wider in some of them — and on
-       whether the browser draws a classic scrollbar. Reserve room for the
-       worst case so it can never cover the top of the poster. */
-    padding-top: 9.75rem;
-  }
-
   .bento-toolbar {
     align-items: flex-start;
     justify-content: flex-start;

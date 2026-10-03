@@ -200,6 +200,31 @@ test('fresh cards that cannot fit around fixed cards become fillers instead of b
   assert.ok(!result.cards.some((c) => c.slotId === 'hero' || c.slotId === 'seasonality'), 'unfittable cards were swapped out')
 })
 
+test('on a phone the wide cards are spread out, unless a lock is in the way', () => {
+  const rowOf = (result, slotId) => {
+    const card = result.cards.find((c) => c.slotId === slotId)
+    return result.placements.find((p) => p.id === card.id).y
+  }
+  const phone = layout.layoutPoster(layout.assemblePosterCards(state.initialPosterState(1, 2), 2, posterFor), 2, 1)
+  assertFullLayout(phone, 2)
+  assert.deepEqual(
+    ['title', 'hero', 'sightings', 'seasonality', 'sources'].map((slotId) => rowOf(phone, slotId)),
+    [0, 1, 3, 7, 11],
+  )
+
+  const locked = {
+    ...state.initialPosterState(1, 2),
+    locks: [...state.defaultLocks(1, 2), { slotId: 'mini-0', seed: 1, x: 1, y: 2 }],
+  }
+  const blocked = layout.layoutPoster(layout.assemblePosterCards(locked, 2, posterFor), 2, 1)
+  assertFullLayout(blocked, 2)
+  assert.equal(rowOf(blocked, 'mini-0'), 2)
+  assert.notEqual(rowOf(blocked, 'hero'), 1)
+
+  const desktop = layout.assemblePosterCards(state.initialPosterState(1, 6), 6, posterFor)
+  assert.ok(!desktop.some((c) => !c.fixed && c.pinXY), 'wider grids pack freely')
+})
+
 test('without user locks the card order matches the registry, so layouts are stable', () => {
   const cards = layout.assemblePosterCards(state.initialPosterState(1, 6), 6, posterFor)
   assert.deepEqual(cards.map((c) => c.slotId), posterFor(1).main.map((t) => t.slotId))
