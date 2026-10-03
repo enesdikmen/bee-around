@@ -219,7 +219,7 @@ Threatened species cards do not depend on these counts. They use a severity casc
 2. If no `CR` species exist, try `EN`.
 3. If no `EN` species exist, try `VU`.
 
-The app requests the top 5 species for the winning category. After resolving species metadata, candidates are grouped by class for animals or kingdom for non-animals. From each group, the app keeps the top 3 by local record count and uses the poster seed to pick one. The rendered at-risk card then seeded-shuffles this pool and shows up to 2 species.
+Each step requests the top 12 species tagged with that category and keeps only those whose species-level category (`/species/{key}/iucnRedListCategory`) is the same; a category counts as having species only if one survives. The occurrence-level tag can be wrong: since GBIF's September 2026 reindexing most records of some common species, such as Hibiscus rosa-sinensis and Oxalis corniculata, carry `CR` while the species is not evaluated. The red-list counts above still use the occurrence-level tags, so they can include such species. After resolving species metadata, candidates are grouped by class for animals or kingdom for non-animals. From each group, the app keeps the top 3 by local record count and uses the poster seed to pick one. The rendered at-risk card then seeded-shuffles this pool and shows up to 2 species.
 
 ### Signature Species
 

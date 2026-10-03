@@ -299,3 +299,23 @@ test('language-specific metadata stays separate and non-429 failures are not ret
   assert.equal((await api.fetchSpecies({ speciesKey: 1, language: 'en' })).vernacularName, 'en')
   assert.equal(calls.length, 2)
 })
+
+test('species-level red-list codes are looked up once per species, including "none"', async (t) => {
+  const api = await freshApi()
+  const clock = virtualClock(t)
+  const calls = []
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    calls.push(url)
+    return url.includes('/species/1/') ? response(200, { code: 'NE' }) : response(200, null)
+  })
+  const both = [api.fetchSpeciesIucnCategory({ speciesKey: 1 }), api.fetchSpeciesIucnCategory({ speciesKey: 1 })]
+  const none = api.fetchSpeciesIucnCategory({ speciesKey: 2 })
+  await clock.advance(1000)
+  assert.deepEqual(await Promise.all(both), ['NE', 'NE'])
+  assert.equal(await none, null)
+  assert.equal(await api.fetchSpeciesIucnCategory({ speciesKey: 2 }), null)
+  assert.deepEqual(calls, [
+    'https://api.gbif.org/v1/species/1/iucnRedListCategory',
+    'https://api.gbif.org/v1/species/2/iucnRedListCategory',
+  ])
+})

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchOccurrenceFacets, fetchSpecies } from '../../api/gbif'
+import { fetchOccurrenceFacets, fetchSpecies, fetchSpeciesIucnCategory } from '../../api/gbif'
 import { IUCN_LABELS } from '../../data/lensFallbacks'
 import type { ConservationSnapshot, Place, ThreatenedSpecies } from '../../types/lens'
 import { placeGeoParams, seededPick } from './shared'
@@ -10,7 +10,9 @@ import { speciesCardBase } from './speciesCards'
 const THREATENED_CATS = ['CR', 'EN', 'VU'] as const
 const ALL_CATS = ['LC', 'NT', 'VU', 'EN', 'CR', 'DD'] as const
 const IUCN_SPECIES_COUNT_FACET_LIMIT = 40000
-const THREATENED_FACET_LIMIT = 5
+// Wider than the cards need, because candidates whose species-level category
+// disagrees are dropped (see fetchSpeciesIucnCategory).
+const THREATENED_FACET_LIMIT = 12
 const THREATENED_PICK_FROM_TOP_PER_GROUP = 3
 
 type ThreatenedCandidate = {
@@ -105,7 +107,10 @@ export const useConservationPools = (
     queryFn: async ({ signal }): Promise<ThreatenedPoolCandidate[]> => {
       if (!selectedPlace) return []
 
-      // Cascade: use the highest severity that has results.
+      // Cascade: use the highest severity that has confirmed results. A
+      // candidate counts only when its species-level category agrees with
+      // the occurrence tag; a failed check drops it rather than risk
+      // calling a common species threatened.
       let raw: Array<{ speciesKey: number; count: number }> = []
       let winningCat: (typeof THREATENED_CATS)[number] = 'CR'
       for (const cat of THREATENED_CATS) {
@@ -116,9 +121,19 @@ export const useConservationPools = (
           iucnRedListCategory: cat,
           signal,
         })
-        raw = (response.facets?.[0]?.counts ?? [])
+        const tagged = (response.facets?.[0]?.counts ?? [])
           .map((c) => ({ speciesKey: Number(c.name), count: c.count }))
           .filter((c) => Number.isFinite(c.speciesKey))
+        const confirmed = await Promise.all(
+          tagged.map((c) =>
+            fetchSpeciesIucnCategory({ speciesKey: c.speciesKey, signal }).then(
+              (code) => code === cat,
+              () => false,
+            ),
+          ),
+        )
+        raw = tagged
+          .filter((_, i) => confirmed[i])
           .sort((a, b) => b.count - a.count || a.speciesKey - b.speciesKey)
         if (raw.length > 0) {
           winningCat = cat

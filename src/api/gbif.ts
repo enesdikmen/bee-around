@@ -180,6 +180,9 @@ const speciesInFlight = new Map<string, Promise<GbifSpecies>>()
 const datasetCache = new Map<string, GbifDataset>()
 const datasetInFlight = new Map<string, Promise<GbifDataset>>()
 
+const iucnCategoryCache = new Map<number, string | null>()
+const iucnCategoryInFlight = new Map<number, Promise<string | null>>()
+
 const OCCURRENCE_FACET_CACHE_TTL_MS = 1000 * 60 * 30
 const occurrenceFacetCache = new Map<
 	string,
@@ -554,6 +557,35 @@ export const fetchSpeciesMedia = async ({
 }: SpeciesMediaRequest) => {
 	const url = buildUrl(`/species/${speciesKey}/media`, { limit, offset })
 	return fetchJson<GbifMediaResponse>(url, { signal })
+}
+
+/**
+ * The species' own IUCN Red List code (e.g. "CR", "LC", "NE"), or null when
+ * GBIF has none. The occurrence-level `iucnRedListCategory` can disagree with
+ * it — in September 2026 most records of common species such as Hibiscus
+ * rosa-sinensis were indexed as CR — so a species is only shown as threatened
+ * when this agrees.
+ */
+export const fetchSpeciesIucnCategory = async ({ speciesKey, signal }: SpeciesRequest) => {
+	const cached = iucnCategoryCache.get(speciesKey)
+	if (cached !== undefined) return raceWithSignal(Promise.resolve(cached), signal)
+
+	const existing = iucnCategoryInFlight.get(speciesKey)
+	if (existing) return raceWithSignal(existing, signal)
+
+	const url = buildUrl(`/species/${speciesKey}/iucnRedListCategory`, {})
+	const request = fetchJson<{ code?: string } | null>(url)
+		.then((result) => {
+			const code = result?.code ?? null
+			iucnCategoryCache.set(speciesKey, code)
+			return code
+		})
+		.finally(() => {
+			iucnCategoryInFlight.delete(speciesKey)
+		})
+
+	iucnCategoryInFlight.set(speciesKey, request)
+	return raceWithSignal(request, signal)
 }
 
 export const fetchDatasetMetadata = async ({
