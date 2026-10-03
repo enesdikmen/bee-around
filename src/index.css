@@ -1120,14 +1120,6 @@ textarea {
   color: rgb(var(--color-ink-soft));
 }
 
-/* Scrolls away with the poster toolbar on narrow screens (see
-   BentoPoster.layout.css) instead of floating over the cards. */
-@media screen and (max-width: 720px) {
-  .app-header {
-    position: absolute;
-  }
-}
-
 @media (max-width: 820px) {
   .app-header {
     flex-wrap: wrap;

@@ -483,18 +483,37 @@ img[src=""] { visibility: hidden; }
 @media screen and (max-width: 720px) {
   .bento-shell {
     padding: 0.7rem 0.9rem 1.5rem;
-    overflow-x: hidden;
+    /* clip, not hidden: hidden would make the shell a scroll container and
+       stop the toolbar from sticking to the viewport. */
+    overflow-x: clip;
   }
 
-  /* The poster scrolls vertically here, so a fixed toolbar would float over
-     the cards. In the page flow it scrolls away with the brand mark, and the
-     poster starts right below however many rows it wraps to — which depends
-     on the interface language. */
+  /* The poster scrolls vertically here. The toolbar sits in the page flow,
+     so the poster starts right below however many rows it wraps to (which
+     depends on the interface language), and sticks to the top on a strip
+     in the page's own colour that the cards scroll under. */
   .bento-toolbar {
-    position: relative;
+    position: sticky;
     inset: auto;
+    top: 0.7rem;
     max-width: none;
     margin-bottom: 1rem;
+  }
+
+  .bento-toolbar::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -0.7rem -0.9rem -0.55rem;
+    background: rgb(var(--color-canvas) / 0.94);
+    border-bottom: 2px solid rgb(var(--color-ink) / 0.14);
+    backdrop-filter: blur(6px);
+  }
+
+  /* While a place loads the poster has no height yet, so centre the bee on
+     the screen rather than on the empty grid under the toolbar. */
+  .bento-grid-loading {
+    position: fixed;
   }
 
   .bento-grid-wrap {
