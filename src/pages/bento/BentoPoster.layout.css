@@ -490,24 +490,14 @@ img[src=""] { visibility: hidden; }
 
   /* The poster scrolls vertically here. The toolbar sits in the page flow,
      so the poster starts right below however many rows it wraps to (which
-     depends on the interface language), and sticks to the top on a strip
-     in the page's own colour that the cards scroll under. */
+     depends on the interface language), and sticks to the top as you
+     scroll. */
   .bento-toolbar {
     position: sticky;
     inset: auto;
     top: 0.7rem;
     max-width: none;
     margin-bottom: 1rem;
-  }
-
-  .bento-toolbar::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    inset: -0.7rem -0.9rem -0.55rem;
-    background: rgb(var(--color-canvas) / 0.94);
-    border-bottom: 2px solid rgb(var(--color-ink) / 0.14);
-    backdrop-filter: blur(6px);
   }
 
   /* While a place loads the poster has no height yet, so centre the bee on
